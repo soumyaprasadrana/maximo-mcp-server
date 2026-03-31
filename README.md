@@ -1,9 +1,10 @@
 # maximo-mcp-server
 
 [![npm version](https://img.shields.io/npm/v/@soumyaprasadrana/maximo-mcp-server.svg)](https://www.npmjs.com/package/@soumyaprasadrana/maximo-mcp-server)
-[![npm downloads](https://img.shields.io/npm/dm/maximo-mcp-server.svg)](https://www.npmjs.com/package/maximo-mcp-server)
+[![npm downloads](https://img.shields.io/npm/dm/%40soumyaprasadrana%2Fmaximo-mcp-server.svg)](https://www.npmjs.com/package/@soumyaprasadrana/maximo-mcp-server)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-339933.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/license-Proprietary-red.svg)](./LICENSE)
+[![Repository](https://img.shields.io/badge/repo-github-black.svg)](https://github.com/soumyaprasadrana/maximo-mcp-server)
 
 Enterprise MCP server for IBM Maximo Application Suite.
 
@@ -40,13 +41,13 @@ IBM Maximo REST / OSLC APIs
 Run directly with `npx`:
 
 ```bash
-npx -y maximo-mcp-server
+npx -y @soumyaprasadrana/maximo-mcp-server
 ```
 
 Or install globally:
 
 ```bash
-npm i -g maximo-mcp-server
+npm i -g @soumyaprasadrana/maximo-mcp-server
 maximo-mcp-server
 ```
 
@@ -59,7 +60,7 @@ MCP_TRANSPORT=http \
 MCP_SERVER_PORT=8001 \
 MAXIMO_URL="https://your-maximo-host/maximo" \
 MAXIMO_API_KEY="your-api-key" \
-npx -y maximo-mcp-server
+npx -y @soumyaprasadrana/maximo-mcp-server
 ```
 
 Exposed endpoints:
@@ -116,7 +117,7 @@ Working Set creation policy:
 
 ## Support
 
-Use the repository issue tracker configured by the publisher for bug reports and feature requests.
+GitHub issues: https://github.com/soumyaprasadrana/maximo-mcp-server/issues
 
 ## License
 
