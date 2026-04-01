@@ -38,18 +38,18 @@ IBM Maximo REST / OSLC APIs
 
 ## Installation
 
-Run directly with `npx`:
-
-```bash
-npx -y @soumyaprasadrana/maximo-mcp-server
-```
-
-Or install globally:
+Install globally:
 
 ```bash
 npm i -g @soumyaprasadrana/maximo-mcp-server
 maximo-mcp-server
 ```
+
+Global install is preferred for CLI usage because:
+
+- startup is faster than `npx` (no per-run package resolution/install delay)
+- it avoids transient `npx` cache issues with native dependencies
+- npm `-g` installs CLI tools globally so they can be run directly as commands
 
 Default transport is `stdio`.
 
@@ -60,7 +60,7 @@ MCP_TRANSPORT=http \
 MCP_SERVER_PORT=8001 \
 MAXIMO_URL="https://your-maximo-host/maximo" \
 MAXIMO_API_KEY="your-api-key" \
-npx -y @soumyaprasadrana/maximo-mcp-server
+maximo-mcp-server
 ```
 
 Exposed endpoints:
