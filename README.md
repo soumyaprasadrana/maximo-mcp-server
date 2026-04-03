@@ -34,6 +34,7 @@ IBM Maximo REST / OSLC APIs
 - Node.js 20 or later
 - npm 10 or later
 - Network access to your Maximo environment
+- Maximo automation script `MAXMCPMETADATA.py` configured in your Maximo environment (mandatory)
 
 Verify:
 
@@ -41,6 +42,15 @@ Verify:
 node -v
 npm -v
 ```
+
+### Mandatory Maximo Setup
+
+Before running the MCP server, configure the metadata extraction automation script in Maximo:
+
+- Script file: `MAXMCPMETADATA.py`
+- Source URL: `https://raw.githubusercontent.com/soumyaprasadrana/maximo-mcp-server/refs/heads/main/MAXMCPMETADATA.py`
+
+This script is required for metadata reconciliation and Object Structure intelligence used by the Metadata Engine.
 
 ## Installation
 
