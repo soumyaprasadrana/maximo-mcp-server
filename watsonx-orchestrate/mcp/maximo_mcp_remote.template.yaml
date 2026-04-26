@@ -1,0 +1,10 @@
+kind: mcp
+name: maximo-mcp-remote
+description: Maximo Remote Mcp Server Oauth (HttpStreamable)
+connections:
+  - maximo_mcp_oauth
+transport: streamable_http
+url: https://<path-to-mcp-server>/mcp
+tools:
+  - "*"
+spec_version: v1

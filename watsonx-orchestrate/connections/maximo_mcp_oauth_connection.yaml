@@ -1,0 +1,10 @@
+app_id: maximo_mcp_oauth
+spec_version: v1
+kind: connection
+environments:
+  draft:
+    kind: oauth_auth_client_credentials_flow
+    type: team
+    app_config:
+      header:
+        content-type: application/x-www-form-urlencoded

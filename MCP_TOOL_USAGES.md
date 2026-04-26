@@ -1,245 +1,184 @@
-## Maximo MCP Tools — Usage Guidelines
+# Maximo MCP Tools - Usage Guidelines
 
-These instructions define the orchestration logic for all Maximo MCP tools.
-The tool schemas already describe parameters — this covers WHEN, WHY, and in
-WHAT ORDER to call each tool, plus rules that prevent common failures.
+These rules are the source of truth for agent orchestration in this repo.
+See `AGENT_CONTEXT_PATTERN.md` for the Context Envelope v1 contract.
 
 ---
 
-## 1. PIPELINES
+## 1) Operation Pipelines
+
+All pipelines below run inside the respective core agent. Process agents delegate to core agents
+and never call these tools directly.
 
 ### READ
-  maximo_get_metadata  →  os_query_builder  →  ws_load  →  present results
+```
+os_query_builder -> ws_load(useLean=true) -> ws_get_records(useLean=true) -> decode LEAN -> return
+```
 
 ### CREATE
-  maximo_get_metadata  →  ws_init_new_record  →  ws_add_record
-  →  ws_preview_changes  →  [user confirms]  →  ws_commit
+```
+ws_init_new_record -> ws_update_draft(id, temp_id, record) -> ws_preview_changes -> [user confirm] -> ws_commit
+```
 
 ### UPDATE
-  maximo_get_metadata  →  os_query_builder  →  ws_load  →  ws_set_active
-  →  ws_get_active  →  ws_update_field / ws_multi_update
-  →  ws_preview_changes  →  [user confirms]  →  ws_commit
+```
+os_query_builder -> ws_load -> ws_set_active(restID='0') -> ws_multi_update(restID='active')
+-> ws_preview_changes -> [user confirm] -> ws_commit
+```
 
 ### STATUS CHANGE
-  os_query_builder  →  ws_load  →  maximo_plan_status_change
-  →  [user confirms]  →  maximo_change_status
+```
+os_query_builder -> ws_load(useLean=false) -> ws_get_records(useLean=false)
+-> extract restId from href (last path segment)
+-> maximo_plan_status_change -> [user confirm] -> maximo_change_status
+```
 
-### WORKFLOW APPROVAL
-  maximo_get_workflow_assignments (includeAllowedActions: true)
-  →  [show user, ask which to action]
-  →  maximo_send_workflow_response
-
-Skip maximo_get_metadata only if you already confirmed the OS name and field
-names earlier in the same session.
-
----
-
-## 2. maximo_get_metadata
-
-Use these URI patterns in order:
-
-  maximo://os/search/{keyword}              → find the OS name (start here)
-  maximo://os/{osName}/schema               → parent field names for select + where
-  maximo://os/{osName}/relatedObjects       → child entries; each has TWO names:
-      relationshipName  → key for childOptions
-      objectName        → dot prefix in where dot-notation
-  maximo://os/{osName}/subschemas/{child}   → field names inside a child object
-
-NEVER use maximo://object/... — bypasses OS-level security.
+### WORKFLOW
+```
+maximo_get_workflow_assignments(includeAllowedActions=true)
+-> [user picks action] -> maximo_send_workflow_response
+```
 
 ---
 
-## 3. os_query_builder
+## 2) maximo_get_metadata
 
-opAction is always "query". osName is required.
+Used only by `maximo_metadata_agent`. URI patterns:
+- `maximo://os/search/{keyword}` - resolve_os
+- `maximo://os/{osName}/schema` - get_schema
+- `maximo://os/{osName}/relatedObjects` - get_related_objects
+- `maximo://os/{osName}/subschemas/{childObjectName}` - get_subschema
+- `maximo://os/{osName}/object/{objectName}/attributes/{attributeNameOrCsv}` - get_attribute_metadata
 
-### WHERE — parent record filtering
-
-All conditions are AND by default. Set orMode: true for OR.
-
-  Equality / comparison:
-    { "field": "siteid",  "op": "=",  "value": "BEDFORD" }
-    { "field": "wopriority", "op": "<", "value": 3 }
-
-  In-list:
-    { "field": "woclass", "op": "in", "value": ["WORKORDER","ACTIVITY"] }
-
-  Wildcard:
-    { "field": "description", "op": "like", "value": "%pump%" }
-
-  Null checks (no value field needed):
-    { "field": "assetnum",   "op": "isnotnull" }   → renders as assetnum=*
-    { "field": "finishdate", "op": "isnull" }       → renders as finishdate!=*
-
-  Date range (ISO 8601):
-    { "field": "reportdate", "op": ">=", "value": "2025-01-01T00:00:00+00:00" }
-    { "field": "reportdate", "op": "<",  "value": "2026-01-01T00:00:00+00:00" }
-
-  Dot notation — filter PARENTS by child attribute value:
-    Use OBJECT NAME (not relationshipName) as the dot prefix.
-    { "field": "ASSETSPEC.NUMVALUE", "op": ">", "value": 300 }
-
-  rawWhere — only when structured where cannot express the clause.
-    Completely overrides structured where. Use for mixed AND/OR nesting only.
-    "rawWhere": "siteid=\"BEDFORD\" and (status=\"APPR\" or status=\"INPRG\")"
-
-### SELECT — fields to return
-
-  Plain field:      "wonum"
-  With alias:       "asset.description--assetdesc"
-  Child block:      { "child": "assignment", "attrs": ["laborcode","craft"] }
-
-### CHILDOPTIONS — filter child rows within each returned parent
-
-  Key = relationshipName (NOT objectName). Does NOT affect which parents return.
-
-  "childOptions": {
-    "assignment": {
-      "limit": 10,
-      "orderBy": { "rules": ["-scheduledate"] },
-      "where": { "conditions": [{ "field": "status", "op": "=", "value": "ACTIVE" }] }
-    }
-  }
-
-### ORDERBY
-
-  Direction prefix mandatory. Plain field name without + or - is rejected.
-  "orderBy": { "rules": ["-wopriority", "+wonum"] }
-
-### OTHER PARAMETERS
-
-  pageSize        integer, default 20
-  collectioncount true → returns total record count
-  relativeuri     true → shorter hrefs (recommended)
-  lean            always true — do not change
-  basePath        only set for legacy OSLC (/maximo/oslc/os)
-                  leave unset for modern installs (default: /api/os)
+Rules:
+- Always set `useLean: true`.
+- Decode LEAN `DICT` + `SCHEMA` before returning - never return raw LEAN text.
+- Domain values are only returned for `SYNONYM`, `ALN`, `NUMERIC` domain types.
+  `CROSSOVER` and `TABLE` domains are skipped (unbounded reference sets).
 
 ---
 
-## 4. ws_load
+## 3) os_query_builder
 
-  Always set useLean: true.
+Creates a working set. Returns a `wsId` that must be passed to `ws_load`.
 
-  The lean response contains:
-    ### SCHEMA  → short key → full field name map
-    ### DICT    → *N pointer → repeated string value map
-  Decode BOTH before presenting any data.
+Required fields:
+- `osName` - full OS name (e.g. `MXAPISR`, not `SR`)
+- `opAction: "query"`
 
----
+### rawWhere (preferred)
+Build directly from `identifierField` + `identifierValue`:
+```
+ticketid="1002"
+ticketid="1002" and siteid="BEDFORD"
+wonum="WO-500" and siteid="BEDFORD"
+status in ["QUEUED","INPROG"] and siteid="BEDFORD"
+```
 
-## 5. CREATE — ws_init_new_record → ws_add_record
+CRITICAL: the "in" operator uses SQUARE brackets, never round brackets.
+- Correct:  status in ["QUEUED","INPROG"]
+- Wrong:    status in ("QUEUED","INPROG")
 
-Step 1: ws_init_new_record (osName)
-  Returns:
-    wsId        — keep this for all subsequent calls
-    draftRecord — system defaults + _tempId
-    metadata    — per-field readOnly / required / constrainedValueList flags
+### select
+Flat string array:
+- All fields: `["*"]`
+- Specific: `["wonum", "status", "description"]`
 
-Step 2: Read draftRecord and metadata BEFORE building your payload:
-  - readOnly fields in metadata MUST NOT be sent in ws_add_record
-    Common readOnly on create: status, changeby, changedate, statusdate,
-    problemcode, fr1code, fr2code, plusppoolnum, plusppoolitemnum
-  - System auto-set fields already in draftRecord — do not re-send:
-    ticketid / wonum (&AUTOKEY&), class, reportdate, historyflag, actlabcost
-  - _tempId from draftRecord MUST be included in ws_add_record — the engine
-    uses it to match your payload to the draft slot
+### childSelects
+Object map, key is relationship name:
+```json
+{ "assignment": ["laborcode", "scheduledate"], "worklog": ["*"] }
+```
 
-Step 3: ws_add_record
-  Send _tempId + only the non-readOnly fields you explicitly want to set.
-
-  Domain-constrained fields (hasList: true or constrainedValueList in metadata)
-  must use values that exist in the Maximo domain. If unsure — OMIT the field
-  rather than guessing. A commit error of type "invalid_domain_value" means the
-  value is not in the allowed list for that field.
-
-Step 4: ws_preview_changes → show user → wait for confirm → ws_commit
-
-  On commit success: status 201, location href contains the new record.
-  On validation_errors:
-    Each error has: type, attribute (field name), detail (reason).
-    Fix: remove/correct the offending fields, call ws_init_new_record again
-    (fresh wsId), re-add, preview, commit.
-    NEVER reuse a wsId after a failed commit.
-    NEVER retry more than twice — if still failing, report the field names
-    and reasons to the user and stop.
+### orderBy
+Direction required: `+field`, `-field`, `field asc`, `field desc`. Never bare `field`.
 
 ---
 
-## 6. UPDATE — ws_set_active → ws_update_field / ws_multi_update
+## 4) Working Set tools
 
-  After ws_load, activate the target record:
-    ws_set_active: restID = "0" (0-based index, simplest form)
+### ws_load
+Loads records into an existing working set created by `os_query_builder` or `ws_init_new_record`.
+Signature: `ws_load(id=<wsId>, useLean=true|false)`.
+**Never call `ws_load` without a valid `wsId` from a prior `os_query_builder` call.**
 
-  Then call ws_get_active to confirm the correct record is active.
+### ws_get_records
+Returns records from a loaded working set.
+- Use `useLean=true` for read operations.
+- Use `useLean=false` when restId extraction from `href` is needed (status/workflow).
+- Decode LEAN `### SCHEMA` and `### DICT` before using field values.
 
-  Stage changes:
-    Single field:  ws_update_field  { field: "description", value: "..." }
-    Multi field:   ws_multi_update  { updates: { field1: val1, field2: val2 } }
+### restId extraction
+For status and workflow, extract `restId` as the last path segment of `href`:
+```
+href: /api/os/MXAPISR/1234  ->  restId: "1234"
+```
 
-  NEVER update readOnly fields via ws_update_field.
-  NEVER update status via ws_update_field — use maximo_plan_status_change.
+### ws_set_active
+Activates a record in the working set for field updates.
+Always call with `restID='0'` to activate the first (and only) record.
 
-  Then: ws_preview_changes → show before/after → confirm → ws_commit
+### ws_multi_update
+Stages field changes on the active record.
+```json
+{ "restID": "active", "stringFields": { "description": "new value" }, "numericFields": { "reportedpriority": 2 } }
+```
+String values -> `stringFields`. Numeric values -> `numericFields`. Never mix types.
+
+### ws_init_new_record
+Starts a new record working set for create flows. Returns `wsId` and `draftRecord._tempId`.
+Both must be stored in ctx (`draft.wsId`, `draft._tempId`) immediately after this call.
+
+### ws_update_draft
+Populates the draft record created by ws_init_new_record. Required params: id (wsId), temp_id (_tempId from init), record (field map).
+Do NOT include _tempId inside the record object - pass it as the top-level temp_id parameter.
+Pass all caller-supplied fields as-is. Exclude: _id, href, _rowstamp, changeby, changedate.
+Child arrays (e.g. invuseline) are fully supported in the record object.
+
+### ws_preview_changes
+Validates staged changes against Maximo before commit. Must be called before `ws_commit`.
+If preview returns explicit errors: call `ws_remove`, return error. Do not commit.
+
+### ws_commit
+Commits the staged working set to Maximo. Only call after `ws_preview_changes` succeeds
+and user has confirmed. On failure: return the error payload unchanged.
+
+### ws_remove
+Cleans up a working set. Call on error paths to avoid orphaned working sets.
 
 ---
 
-## 7. STATUS CHANGE
+## 5) Status tools
 
-  Always call maximo_plan_status_change first. Show user:
-    - Current status
-    - Whether the requested transition is valid
-    - All currently allowed transitions
-  Only call maximo_change_status after explicit user confirmation.
+### maximo_plan_status_change
+- Requires `osName`, `restId` (numeric, from href), and optionally `newStatus`.
+- Returns current status and allowed transitions.
+- Always call before `maximo_change_status`.
 
----
-
-## 8. WORKFLOW
-
-  maximo_get_workflow_assignments:
-    Use includeAllowedActions: true to get valid action names in one call.
-
-  maximo_send_workflow_response:
-    osName = OS of the OWNING record (e.g. MXAPIWO) — NOT WFASSIGNMENT
-    restId = ownerid from the assignment — NOT the assignment's own ID
-    Omit actionName first to list allowed actions, then call again with
-    actionName to execute.
+### maximo_change_status
+- Call only after plan and explicit user confirmation.
+- Requires `osName`, `restId`, `newStatus`. Optional: `memo`, `statusDate`.
 
 ---
 
-## 9. CRITICAL RULES — read every one
+## 6) Workflow tools
 
-  R1.  childOptions key = relationshipName, NEVER objectName
-       Wrong: { "LABTRANS": {...} }    Right: { "labtrans": {...} }
+### maximo_get_workflow_assignments
+- Always pass `includeAllowedActions: true`.
+- Returns assignments with `ownerid`, `processName`, `taskDescription`, `allowedActions`.
+- `ownerid` is the value to pass as `restId` to `maximo_send_workflow_response`.
 
-  R2.  Dot notation in where = objectName prefix, NEVER relationshipName
-       Wrong: "labtrans.TRANSTYPE"    Right: "LABTRANS.TRANSTYPE"
+### maximo_send_workflow_response
+- `restId` = `ownerid` from the assignment (not the assignment id itself).
+- `osName` must be the owning record's OS (e.g. `MXAPISR`).
+- `actionName` must be an exact string from the `allowedActions` list - never guessed.
 
-  R3.  orderBy direction prefix is mandatory
-       Wrong: ["wopriority"]    Right: ["-wopriority"]
+---
 
-  R4.  rawWhere silently overrides all structured where — never set both
-
-  R5.  childOptions filters child rows only — does NOT filter parent records
-       To filter parents by child data → use dot notation in main where
-
-  R6.  Working set IDs expire — on "working set not found" silently
-       re-run os_query_builder and continue
-
-  R7.  ws_send_workflow_response targets the OWNING record
-       Use ownerid from assignment, not the assignment's own ID
-
-  R8.  Never use maximo://object/... URIs — always maximo://os/...
-
-  R9.  Never send readOnly fields in ws_add_record or ws_multi_update
-
-  R10. Never reuse a wsId after a failed commit — always ws_init_new_record again
-
-  R11. _tempId from draftRecord must be included in ws_add_record
-
-  R12. For domain-constrained fields — omit rather than guess
-       A wrong value causes "invalid_domain_value" at commit time
-
-  R13. Never call ws_commit without ws_preview_changes + user confirmation first
-
-  R14. Never change status via ws_update_field — always use maximo_plan_status_change
+## 7) Non-negotiables
+- No fabricated data on any tool or agent failure.
+- `ws_load` requires a valid `wsId` - never call it without one.
+- Always call `ws_preview_changes` before `ws_commit`.
+- Require explicit user confirmation before any write (commit / execute / change_status / send_workflow_response).
+- Domain values are not validated by agents for CROSSOVER/TABLE domain types - Maximo validates at commit.
+- Process agents never call MCP tools other than ctx_*.
