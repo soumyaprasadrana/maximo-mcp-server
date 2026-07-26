@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Allow: /guide
+Allow: /concepts
+Allow: /tools
+Allow: /recipes
+Disallow: /.vitepress
+Disallow: /node_modules
+Crawl-delay: 1
+Sitemap: https://soumyaprasadrana.github.io/maximo-mcp-server/sitemap.xml

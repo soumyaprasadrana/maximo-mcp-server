@@ -67,6 +67,12 @@ For child fields, `ws_preview_changes` shows only the changed rows, each labelle
 
 If a submitted child row is missing one or more of its natural-key fields, `ws_preview_changes` adds a non-blocking `child_missing_natural_key` warning: Maximo will match by natural key, and rows missing key fields may be treated as new inserts. Provide the key fields to get precise Add/Change/Delete behavior.
 
+## Nested child structures (child-of-child)
+
+Some Object Structures expose **grandchild** collections — child rows that themselves carry child arrays. Examples: `maxsyskeys` under `MAXSYSINDEXES`, or similar structural hierarchies.
+
+The diff engine automatically discovers and recursively tags grandchild rows with their own `_action` values, ensuring MERGE semantics work correctly at nested levels. You don't need special handling — add/remove grandchildren the same way as direct children, and the preview/commit path handles the nesting.
+
 ## Creating a record with children
 
 For a brand-new record, use the create flow (`ws_init_new_record` → `ws_update_draft`). Child arrays are fully supported there — pass them directly in the draft's fields:

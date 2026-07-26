@@ -17,7 +17,11 @@ Resolves `maximo://` URIs for Object Structure discovery and schema lookup. **Al
 
 ### `os_query_builder`
 
-Builds a validated OSLC query URL **and creates the Working Set** (returns `wsId`). Supports `where` (parent filters, incl. dot-notation on children), `childOptions` (which child rows appear), `select`, `orderBy`, `pageSize`, `savedQuery`, and full-text `searchTerms`. This is the official path to create a Working Set.
+Builds a validated OSLC query URL **and creates the Working Set** (returns `wsId`). Supports `where` (parent filters, incl. dot-notation on children), `childOptions` (which child rows appear), `select`, `orderBy`, `pageSize`, `savedQuery`, and full-text `searchTerms`. 
+
+Advanced: Use `rawWhere` and `rawSelect` to pass raw OSLC strings when the structured schema doesn't fit complex expressions.
+
+This is the official path to create a Working Set.
 
 ## Working Set — read & load
 

@@ -38,7 +38,84 @@ IBM Maximo REST / OSLC APIs
 
 ---
 
-## What's New in v1.1.8
+## Latest Release (v1.3.7)
+
+### New Features
+
+- **`rawSelect` parameter on `os_query_builder`** — Pass raw OSLC select strings directly when complex field selections don't fit the structured syntax. Useful for nested child relationships and wildcard expansions.
+
+### Improvements
+
+- **Better handling of nested child structures** — Child-of-child relations (like index keys under system indexes) now get properly tagged with their own actions during diff computation, ensuring correct MERGE semantics on commit.
+
+- **Search engine indexing** — Added search configuration files and metadata for better documentation discovery.
+
+Full release notes: [CHANGELOG.md](https://github.com/soumyaprasadrana/maximo-mcp-server/blob/main/CHANGELOG.md)
+
+## Earlier Releases
+
+### v1.3.1
+
+Reliability improvements on `os_query_builder`
+
+A reliability pass on `os_query_builder` for cross-agent compatibility, plus a
+data-safety fix for Application Designer (`DMMAXAPPS` / `MAXPRESENTATION`) writes.
+
+### Fixed
+
+- **`os_query_builder` `childOptions` no longer silently breaks for schema-driven
+  agents.** It moved from a dynamic-keyed record (`{"assignment": {...}}`) to an
+  array of entries (`[{"relationship": "assignment", ...}]`). The record-of-object
+  shape did not survive this MCP SDK's zod v4 → JSON-Schema conversion — the
+  advertised tool schema silently collapsed the nested shape to `{}`, hiding
+  `where`/`orderBy`/`limit` from any agent that builds calls from the schema rather
+  than from prose docs. **Breaking for `childOptions` callers** — see the CHANGELOG
+  for the before/after shape.
+- **Numeric fields now accept numeric strings.** `pageSize`, `childOptions[].limit`,
+  `ws_update_field`'s `numericValue`, `ws_multi_update`'s `numericFields`, and
+  `ws_remove_child_record`'s `index` now coerce (`z.coerce.number()`) instead of
+  hard-rejecting a value that arrives as a JSON string across the tool-calling
+  boundary — a real failure mode we hit with more than one MCP client.
+- **Fixed a duplicate-row risk when updating a singleton child object** (e.g.
+  `DMMAXAPPS.MAXPRESENTATION`, whose only declared key, `app`, is parent-level and
+  never present on the child row itself). `ws_add_child_record` previously had no
+  reliable way to match such a row against the original snapshot; committing could
+  silently create a duplicate. The working-set diff engine now falls back to the
+  object's generated `uniqueid` field to match correctly, and hard-rejects (rather
+  than silently committing) the rare case where no match key can be resolved at all.
+- **`mcp_server_status` now reports the real installed version** instead of
+  `"unknown"` when launched directly by an MCP client (the normal production path,
+  as opposed to via `npm run`), and now also reports whether
+  `MCP_STRICT_TOOL_SCHEMA` is active.
+
+### Which schema mode should I use?
+
+Most agents should use the **default (loose) schema** — no configuration needed.
+Set `MCP_STRICT_TOOL_SCHEMA=true` only if your specific orchestrator is known to
+reject `anyOf`/nullable JSON-Schema shapes (this project has seen it with certain
+non-Claude orchestrators). Both modes are exercised by the test suite.
+
+## What's New in v1.2.2
+
+### Maximo Developer Copilot Mode (experimental)
+
+Set `MCP_COPILOT_MODE=true` (or `--copilot-mode`) to turn the server into a **Maximo Developer Copilot** for coding agents such as Claude and Cursor.
+
+Instead of only reading and updating business data, Copilot mode lets an agent **develop, configure, and validate Maximo as a platform** — using Migration Manager (`DM`-prefixed) Object Structures for discovery and change.
+
+What it brings to the table:
+
+- **Configuration as a governed workflow** — create and edit configuration objects (domains and other Migration Manager entities) through the same discover → stage → **preview** → **explicit approval** → commit lifecycle used for data. Nothing is written to Maximo without a reviewable diff.
+- **Migration Manager access** — writes to `DM`-prefixed Object Structures are unlocked via the `MIGRATIONMGR` `useWith` gate, so agents can safely touch platform configuration that normal data OS objects don't expose.
+- **Metadata-aware, end to end** — reuses the existing metadata engine, Working Set staging, and non-blocking validation warnings, so configuration changes get the same field/domain/type checks as data changes.
+
+**Prerequisite:** Migration Manager Object Structures must be enabled for OSLC discovery — ensure the Maximo system property `mxe.oslc.validusewith` includes `MIGRATIONMGR`:
+
+```text
+INTEGRATION,OSLC,REPORTING,MIGRATIONMGR
+```
+
+> **Experimental — development environments only.** Review every Working Set preview and validation warning before committing configuration changes. See [Maximo Developer Copilot Mode](#maximo-developer-copilot-mode) below for full configuration.
 
 ### Built-in OAuth 2.0 Authorization Server (HTTP transport)
 

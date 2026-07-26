@@ -22,7 +22,7 @@ A local SQLite-backed metadata store, synced from your Maximo instance, with key
 
 ### 2. Validated Query Building
 
-`os_query_builder` converts structured intent (`where`, `select`, `orderBy`, `childOptions`, `savedQuery`) into a metadata-validated OSLC URL and opens a **Working Set** session. No hand-written OSLC strings.
+`os_query_builder` converts structured intent (`where`, `select`, `orderBy`, `childOptions`, `savedQuery`) into a metadata-validated OSLC URL and opens a **Working Set** session. For complex expressions that the structured schema can't fit, use `rawWhere` and `rawSelect` to pass raw OSLC directly. No unsafe hand-written queries.
 
 ### 3. Working Set transaction model
 

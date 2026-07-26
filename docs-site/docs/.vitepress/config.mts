@@ -24,16 +24,30 @@ export default defineConfig({
 
   head: [
     ["meta", { name: "theme-color", content: "#3c7eff" }],
+    // SEO Meta Tags
+    ["meta", { name: "viewport", content: "width=device-width, initial-scale=1.0" }],
+    ["meta", { name: "keywords", content: "Maximo, MCP, OSLC, IBM, query builder, working set, AI agent, OAuth" }],
+    ["meta", { name: "author", content: "Soumya Prasad Rana" }],
+    ["meta", { name: "description", content: "Enterprise MCP server for IBM Maximo — metadata-aware query building and staged Working Set transactions for AI agents" }],
+    // Open Graph / Social Media
     ["meta", { property: "og:type", content: "website" }],
-    ["meta", { property: "og:title", content: "Maximo MCP Server" }],
-    [
-      "meta",
-      {
-        property: "og:description",
-        content:
-          "Governed AI-agent access to IBM Maximo: metadata discovery, validated OSLC queries, and staged preview/commit changes.",
-      },
-    ],
+    ["meta", { property: "og:title", content: "Maximo MCP Server — Enterprise AI Integration" }],
+    ["meta", {
+      property: "og:description",
+      content: "Governed AI-agent access to IBM Maximo: metadata discovery, validated OSLC queries, and staged preview/commit changes.",
+    }],
+    ["meta", { property: "og:url", content: "https://soumyaprasadrana.github.io/maximo-mcp-server" }],
+    ["meta", { property: "og:site_name", content: "Maximo MCP Server" }],
+    // Twitter Card
+    ["meta", { name: "twitter:card", content: "summary_large_image" }],
+    ["meta", { name: "twitter:title", content: "Maximo MCP Server" }],
+    ["meta", { name: "twitter:description", content: "Metadata-aware OSLC queries and Working Set transactions for Maximo AI agents" }],
+    // Canonical URL
+    ["link", { rel: "canonical", href: "https://soumyaprasadrana.github.io/maximo-mcp-server" }],
+    // Robots
+    ["meta", { name: "robots", content: "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" }],
+    // Language alternatives
+    ["link", { rel: "alternate", hreflang: "en", href: "https://soumyaprasadrana.github.io/maximo-mcp-server" }],
   ],
 
   themeConfig: {

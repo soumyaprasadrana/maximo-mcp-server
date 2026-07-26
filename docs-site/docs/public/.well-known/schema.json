@@ -1,0 +1,42 @@
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Maximo MCP Server Documentation",
+  "description": "Enterprise MCP server documentation for IBM Maximo — metadata-aware query building and staged Working Set transactions for AI agents",
+  "url": "https://soumyaprasadrana.github.io/maximo-mcp-server",
+  "author": {
+    "@type": "Person",
+    "name": "Soumya Prasad Rana",
+    "url": "https://github.com/soumyaprasadrana"
+  },
+  "license": "MIT",
+  "dateModified": "2026-07-26",
+  "inLanguage": "en-US",
+  "isPartOf": {
+    "@type": "SoftwareApplication",
+    "name": "maximo-mcp-server",
+    "url": "https://github.com/soumyaprasadrana/maximo-mcp-server"
+  },
+  "about": [
+    {
+      "@type": "Thing",
+      "name": "OSLC Query Building",
+      "description": "Metadata-aware query construction for IBM Maximo"
+    },
+    {
+      "@type": "Thing",
+      "name": "Working Set Model",
+      "description": "Staged transaction model for data changes"
+    },
+    {
+      "@type": "Thing",
+      "name": "MCP Integration",
+      "description": "Model Context Protocol server for AI agents"
+    }
+  ],
+  "keywords": "Maximo, MCP, OSLC, IBM, query builder, working set, AI agent, OAuth 2.0",
+  "audience": {
+    "@type": "Audience",
+    "audienceType": ["Developers", "System Administrators", "AI Engineers"]
+  }
+}
