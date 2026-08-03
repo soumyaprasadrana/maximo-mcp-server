@@ -52,6 +52,35 @@ Every setting can be provided as an **environment variable** or an equivalent **
 `none` is recommended for production. Local embeddings need native dependencies that may not build on every platform.
 :::
 
+## Async commit
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `MCP_ASYNC_COMMIT_OS` | `DMMAXOBJECTCFG` | Comma-separated Object Structures whose `ws_commit` runs as a background job. Set to an empty string to make every commit synchronous. |
+| `MCP_ASYNC_COMMIT_RETENTION_MS` | `1800000` | How long a finished commit job stays pollable by `ws_commit_status` (30 minutes). |
+
+See [Async Commit](/guide/async-commit) for the start/poll contract.
+
+## HTTP transport and timeouts
+
+Outbound calls use two connection pools. Configuration writes (create, update, delete, sync,
+bulk) go through a long-operation pool with no per-phase timeout, bounded by an absolute
+deadline; reads keep a protective per-phase timeout so a wedged request cannot hang forever.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `MAXIMO_COMMIT_TIMEOUT_MS` | `900000` | Total wall-clock budget for one configuration write (15 minutes). Raise it if your instance needs longer for large object creates. |
+| `MAXIMO_HTTP_TIMEOUT_MS` | `300000` | Per-phase timeout for ordinary reads, metadata, and lookups. |
+| `MAXIMO_MAX_CONNECTIONS` | `32` | Maximum simultaneous connections per origin, across both pools. |
+
+::: warning Why this exists
+Node's global `fetch()` caps every request at a 300s undici `headersTimeout` that cannot be
+raised from the call site. Long `DMMAXOBJECTCFG` commits were being cut off mid-flight while
+Maximo kept working, surfacing only as `TypeError: fetch failed`. If you ever see a commit fail
+at almost exactly 300s with `UND_ERR_HEADERS_TIMEOUT`, the server is running without its
+dispatcher (check the startup log for an `undici unavailable` warning).
+:::
+
 ## Audit
 
 | Variable | CLI flag | Default | Description |

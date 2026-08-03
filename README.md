@@ -38,7 +38,87 @@ IBM Maximo REST / OSLC APIs
 
 ---
 
-## Latest Release (v1.3.7)
+## Versions and access
+
+| | Version | How to get it |
+|---|---|---|
+| **Published (npm)** | **1.3.7** | `npm install -g @soumyaprasadrana/maximo-mcp-server` |
+| **Current line** | **1.5.0** | On request -- [contact](#contact) |
+
+**1.3.7 is the last version published to the npm registry.** Development continued through
+1.4.1, 1.4.2, 1.4.5 and 1.5.0, but those builds are not on the public registry -- there is no
+later public tag to install. The 1.3.7 instructions below are valid and supported; they
+describe the last public registry version.
+
+For **1.5.0**, or for evaluation / partnership / a private build, contact
+**soumyaprasad.rana@gmail.com**. Full detail: [VERSIONS.md](VERSIONS.md).
+
+---
+
+## What is new since 1.3.7 (current line: 1.5.0)
+
+Everything in this section is in the **1.5.0** line and is **not** on npm. It is documented
+here so the capability is public even where the build is on request.
+
+### Configuration safety guards (1.5.0)
+
+Some Maximo configuration writes are accepted without error while altering far more than the
+record you edited -- a class of platform pitfall the guards catch at preview, before anything
+reaches your instance. A pluggable guard layer runs between staging and sending, and either
+repairs the payload or refuses to send it.
+
+The clearest example is Same As. Over the REST API, an attribute whose type or length does not
+match its master is propagated across the whole inheritance family. On a common shared key such
+as `ASSET.ASSETNUM`, a single mismatch can fan out to **hundreds of attributes across dozens of
+objects**, with no error raised -- so it stays invisible until a later Configure Database. This
+is Maximo's own behavior; the `sameas-parity` guard is what keeps it from reaching your database.
+
+- `sameas-parity` repairs an inherited definition that was omitted, and **blocks** one that
+  contradicts its master, naming the exact values required.
+- Guards run in **both** `ws_preview_changes` (as blocking `guard_violations`) and `ws_commit`
+  (where nothing is sent). A guard that cannot evaluate blocks rather than passing the change.
+- Adding a guard is one file plus one registry line, so new hazards are cheap to encode.
+
+### Configure Database, end to end (1.5.0)
+
+| Tool | What it does | Gate |
+|------|--------------|------|
+| `maximo_dbconfig_status` | Read-only config level: `NONE` / `NONSTRUCT` / `STRUCT`, Admin Mode state, and which IBM permissions the API user holds | read-only |
+| `maximo_dbconfig_apply_status` | Read-only poll -- one `phase`: `CLEAN` / `PENDING` / `RUNNING`, plus Maximo's own messages | read-only |
+| `maximo_dbconfig_discard` | Discard **pending** configuration; nothing applied is touched | `confirm` + IBM `CONFIGUR.REMOVE` |
+| `maximo_dbconfig_apply` | Apply Configuration Changes -- alters physical schema | `confirm` + `confirmToken` + IBM `CONFIGUR.CONFIGURE`; refuses a STRUCT apply while Admin Mode is off |
+| `maximo_admin_mode` | Start / end / cancel an Admin Mode transition | `confirm` + IBM `CONFIGUR.ADMINMODE` |
+
+Only `STRUCT` changes need Admin Mode, so a non-structural change no longer costs a
+maintenance window it never required.
+
+### Diagnostics and configuration access (1.5.0)
+
+| Tool | What it does | Gate |
+|------|--------------|------|
+| `maximo_sql_query` | Read-only SQL for questions the object structures cannot answer -- single `SELECT`, DML/DDL refused server-side, results capped | human approval on **every** call |
+| `maximo_system_property` | Get / list / set system properties -- the only write path where the property object structure returns nothing | `confirm` on `set` |
+| `maximo_copilot_setup` | Install / inspect / remove the utility scripts and their signature options; dry-run by default | never writes grants |
+
+Access is enforced by Maximo itself: each utility carries a signature option on an existing
+IBM application, and **an administrator must grant it**. The server never writes
+`APPLICATIONAUTH`, and privileged actions additionally require the genuine IBM permission, so
+a server-side grant can never substitute for Maximo's own.
+
+### Reliability (1.4.2 - 1.4.5)
+
+- **Asynchronous commit.** Object-configuration commits routinely outlive an MCP client
+  timeout. `ws_commit` returns an id immediately and `ws_commit_status` polls to completion.
+- **Long-operation HTTP handling.** Configuration writes ride a dedicated connection pool, so
+  a slow commit is no longer severed at a fixed ceiling while Maximo is still working.
+- **Failures stop reporting themselves as successes.** A commit whose operations failed now
+  fails, including the case where every row of a bulk call was rejected behind an HTTP 200.
+  Maximo's `BMXAA*` codes are surfaced verbatim so an agent can correct its own payload, and
+  a commit with no HTTP response is marked outcome-unknown rather than retried blindly.
+
+Full history: [CHANGELOG.md](CHANGELOG.md).
+
+## Last public npm release (v1.3.7) — 2026-07-26
 
 ### New Features
 
@@ -178,6 +258,11 @@ Without this script the server starts but metadata sync fails and all tools retu
 ---
 
 ## Installation
+
+> Installs **1.3.7**, the last version published to the npm registry. That is the expected
+> result -- there is no later public tag. For a newer build, see
+> [Versions and access](#versions-and-access).
+
 
 Install globally (recommended for CLI use):
 
@@ -539,6 +624,70 @@ Copilot metadata discovery uses all `useWith` values configured in `mxe.oslc.val
 
 > **Experimental feature:** Use only in development environments. Review every Working Set preview and validation warning before committing configuration changes.
 
+#### Copilot utilities: one-time setup
+
+Copilot mode also ships a small set of **permissioned automation scripts** (`MCPUTILS.*`) that
+reach the few things Object Structures cannot: Configure Database status, Admin Mode, and system
+properties. They are **not installed automatically** - run setup once, the same way you register
+an OAuth client.
+
+**Step 1 - install the utilities** (writes to Maximo, so it is explicit):
+
+```bash
+maximo-mcp-server --setup-copilot --copilot-mode --maximo-url https://your-maximo/maximo --maximo-api-key YOUR_KEY
+```
+
+Add `--copilot-dry-run` first if you want to see exactly what it would do without writing
+anything. The command creates three automation scripts plus one signature option per script,
+then prints the grants required and exits.
+
+The signature options are added to **existing IBM applications** - `CONFIGUR` (Database
+Configuration) and `PROPMAINT` (System Properties). No new application is created, and no
+presentation, menu or navigation is touched.
+
+**Step 2 - a Maximo administrator grants the options** (this part cannot be automated: the
+server never writes `APPLICATIONAUTH`). In Security Groups, for the group of the API user this
+server connects as:
+
+| Application                  | Options to grant                  |
+| ---------------------------- | --------------------------------- |
+| Database Configuration       | `MCPRELOADCACHE`, `MCPDBCFGSTATUS` |
+| System Properties            | `MCPSYSPROP`                      |
+
+Until these are granted, Maximo itself rejects the calls (`BMXAA0028E`) and the tools report
+`not_granted` with the exact remedy. This is by design - the options are real access control.
+
+**Step 3 - verify:**
+
+```bash
+maximo-mcp-server --copilot-status --maximo-url https://your-maximo/maximo --maximo-api-key YOUR_KEY
+```
+
+Then start the server normally with `--copilot-mode`. On startup the server only **verifies and
+reports** - it never writes configuration on its own. The agent can also drive all of this
+through the `maximo_copilot_setup` tool.
+
+**To remove everything** (for anyone who does not want these utilities):
+
+```bash
+maximo-mcp-server --uninstall-copilot --maximo-url https://your-maximo/maximo --maximo-api-key YOUR_KEY
+```
+
+This deletes the scripts and the signature options this server created, leaving the IBM
+applications exactly as they were. An option that is still granted to a security group cannot be
+deleted - revoke it first; the command reports that rather than claiming a clean removal.
+
+| Variable                       | CLI flag                     | Default | Description                                                       |
+| ------------------------------ | ---------------------------- | ------- | ----------------------------------------------------------------- |
+| `MCP_COPILOT_SETUP`            | `--setup-copilot`            | `false` | One-shot: install the copilot utilities, print grants, exit        |
+| `MCP_COPILOT_STATUS`           | `--copilot-status`           | `false` | One-shot, read-only: report install state and outstanding grants   |
+| `MCP_COPILOT_UNINSTALL`        | `--uninstall-copilot`        | `false` | One-shot: remove the utilities and their signature options         |
+| `MCP_COPILOT_SETUP_DRY_RUN`    | `--copilot-dry-run`          | `false` | Preview a setup/uninstall without writing                         |
+| `MCP_COPILOT_AUTO_PROVISION`   | `--copilot-auto-provision`   | `false` | Provision on every startup instead of only verifying              |
+
+Prerequisite: the API user needs `INSERT` on `MXAPIAUTOSCRIPT` (to deploy the scripts) and write
+access to `DMMAXAPPS`.
+
 ---
 
 ## Tool Reference
@@ -802,3 +951,16 @@ Tails log entries from MCP server log files.
 ## Support
 
 GitHub issues: https://github.com/soumyaprasadrana/maximo-mcp-server/issues
+
+## Contact
+
+**soumyaprasad.rana@gmail.com**
+
+Get in touch for:
+
+- a build newer than **1.3.7** (the last version published to npm)
+- evaluation, partnership, or a private / tailored build
+
+Version reality in one place: [VERSIONS.md](VERSIONS.md). Related project:
+[maximo-kit](https://github.com/soumyaprasadrana/maximo-kit) -- the Spec Kit extension that
+drives this server through a design-first, recipe-driven configuration workflow.

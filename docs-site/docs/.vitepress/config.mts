@@ -59,9 +59,13 @@ export default defineConfig({
       { text: "Concepts", link: "/concepts/working-set", activeMatch: "/concepts/" },
       { text: "Tools", link: "/tools/", activeMatch: "/tools/" },
       { text: "Recipes", link: "/recipes/", activeMatch: "/recipes/" },
+      { text: "Versions", link: "/versions", activeMatch: "/versions" },
       {
-        text: "v1.2.0",
+        // Label reflects the last PUBLISHED npm version, not the current dev line.
+        // Keep it in step with /versions.md.
+        text: "v1.3.7 (npm)",
         items: [
+          { text: "Versions and access", link: "/versions" },
           { text: "npm package", link: NPM },
           { text: "Changelog / Releases", link: `${REPO}/releases` },
           { text: "Report an issue", link: `${REPO}/issues` },
@@ -78,6 +82,7 @@ export default defineConfig({
             { text: "Installation & Setup", link: "/guide/getting-started" },
             { text: "Configuration Reference", link: "/guide/configuration" },
             { text: "Connecting Clients", link: "/guide/clients" },
+            { text: "Async Commit", link: "/guide/async-commit" },
           ],
         },
       ],
@@ -95,7 +100,10 @@ export default defineConfig({
       "/tools/": [
         {
           text: "Tool Reference",
-          items: [{ text: "All Tools", link: "/tools/" }],
+          items: [
+            { text: "All Tools", link: "/tools/" },
+            { text: "Copilot Tools (v1.5.0)", link: "/tools/copilot" },
+          ],
         },
       ],
       "/recipes/": [

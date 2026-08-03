@@ -2,6 +2,12 @@
 
 Every tool the server exposes to MCP clients, grouped by purpose. Tool names use underscores.
 
+::: tip Configuration tooling (v1.5.0, not on npm)
+Configure Database, Admin Mode, system properties and read-only SQL diagnostics are in
+**[Copilot Tools](/tools/copilot)**. Those ship in the 1.5.0 line; the last npm release
+is 1.3.7. See [Versions and access](/versions).
+:::
+
 ## Metadata & discovery
 
 ### `maximo_get_metadata`
@@ -52,7 +58,8 @@ This is the official path to create a Working Set.
 | Tool | What it does |
 | --- | --- |
 | `ws_preview_changes` | Staged diff + non-blocking `validation_warnings` |
-| `ws_commit` | Plan and apply staged changes to Maximo |
+| `ws_commit` | Plan and apply staged changes to Maximo — [async for slow object structures](/guide/async-commit) |
+| `ws_commit_status` | Poll a background commit by `asyncId` (or Working Set id) |
 | `ws_discard` | Drop staged changes, keep loaded records |
 | `ws_remove` | Remove the Working Set from memory (session cleanup) |
 
