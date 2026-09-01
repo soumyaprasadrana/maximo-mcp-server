@@ -2,16 +2,36 @@ from psdi.server import MXServer
 from psdi.security import UserInfo
 from com.ibm.json.java import JSONObject, JSONArray
 from java.sql import Connection
-from java.lang import String, Integer, Boolean
+from java.lang import String, Integer, Boolean, Double
 
 mx = MXServer.getMXServer()
 ui = mx.getSystemUserInfo()
+
+# =========================================================================
+# 0. GET VALID OBJECT STRUCTURE USEWITH VALUES
+# =========================================================================
+validUseWith = mx.getProperty("mxe.oslc.validusewith")
+
+if validUseWith is None or not str(validUseWith).strip():
+    validUseWith = "INTEGRATION,OSLC"
+
+useWithValues = [
+    value.strip().upper()
+    for value in str(validUseWith).split(",")
+    if value and value.strip()
+]
+
+# Example: 'OSLC','INTEGRATION','REPORTING','MIGRATIONMGR'
+useWithInClause = ",".join(
+    ["'" + value.replace("'", "''") + "'" for value in useWithValues]
+)
 
 def runQuery(sql):
     rs = None
     stmt = None
     conn = None
     rows = []
+
     try:
         conn = mx.getDBManager().getConnection(ui.getConnectionKey())
         stmt = conn.createStatement()
@@ -25,11 +45,14 @@ def runQuery(sql):
                 row[meta.getColumnName(i).lower()] = rs.getObject(i)
             rows.append(row)
     finally:
-        if rs: rs.close()
-        if stmt: stmt.close()
-        if conn: 
+        if rs:
+            rs.close()
+        if stmt:
+            stmt.close()
+        if conn:
             conn.close()
             mx.getDBManager().freeConnection(ui.getConnectionKey())
+
     return rows
 
 
@@ -42,16 +65,15 @@ FROM maximo.MAXINTOBJDETAIL
 WHERE INTOBJECTNAME IN (
     SELECT DISTINCT intobjectname
     FROM MAXINTOBJECT
-    WHERE USEWITH = 'INTEGRATION' OR USEWITH = 'OSLC'
+    WHERE USEWITH IN (""" + useWithInClause + """)
 )
 ORDER BY INTOBJECTNAME, OBJECTNAME
 """
 
 osObjectRows = runQuery(sql_os_objects)
 
-# Build mapping
-osMap = {}           # OS -> [Objects]
-objectToOS = {}      # Object -> [OS]
+osMap = {}
+objectToOS = {}
 
 for row in osObjectRows:
     osName = row["intobjectname"]
@@ -67,10 +89,10 @@ for row in osObjectRows:
 
 
 # =========================================================================
-# 2A. GET OBJECT METADATA (persistent, description, servicename)
+# 2A. GET OBJECT METADATA
 # =========================================================================
 sql_object_meta = """
-SELECT objectname, description, persistent, servicename
+SELECT objectname, description, persistent, servicename, EXTENDSOBJECT
 FROM MAXOBJECTCFG
 WHERE objectname IN (
     SELECT DISTINCT OBJECTNAME
@@ -78,7 +100,7 @@ WHERE objectname IN (
     WHERE INTOBJECTNAME IN (
         SELECT DISTINCT intobjectname
         FROM MAXINTOBJECT
-        WHERE USEWITH = 'INTEGRATION' OR USEWITH = 'OSLC'
+        WHERE USEWITH IN (""" + useWithInClause + """)
     )
 )
 ORDER BY objectname
@@ -86,32 +108,42 @@ ORDER BY objectname
 
 objectMetaRows = runQuery(sql_object_meta)
 
-objectMeta = {}  # objectName -> metadata
+objectMeta = {}
 
 for row in objectMetaRows:
     obj = row["objectname"]
+    ext = row.get("extendsoBject")
+    if ext is None:
+        ext = row.get("extendsobject")
+    if ext is None:
+        ext = row.get("EXTENDSOBJECT")
+    extName = str(ext).strip().upper() if ext else None
+    if not extName:
+        extName = None
     objectMeta[obj] = {
         "description": row["description"],
         "persistent": True if row["persistent"] == 1 else False,
-        "servicename": row["servicename"]
+        "servicename": row["servicename"],
+        "extendsObject": extName
     }
-    
+
+
 # =========================================================================
-# 2B. GET PRIMARY KEY ATTRIBUTES FOR EACH OBJECT
+# 2B. GET PRIMARY KEY ATTRIBUTES
 # =========================================================================
 sql_pk = """
 SELECT OBJECTNAME, ATTRIBUTENAME, TITLE
 FROM MAXATTRIBUTECFG
 WHERE REQUIRED = 1
   AND PRIMARYKEYCOLSEQ IS NOT NULL
-  AND PERSISTENT = 1 AND 
-  OBJECTNAME IN (
+  AND PERSISTENT = 1
+  AND OBJECTNAME IN (
     SELECT DISTINCT OBJECTNAME
     FROM maximo.MAXINTOBJDETAIL
     WHERE INTOBJECTNAME IN (
         SELECT DISTINCT intobjectname
         FROM MAXINTOBJECT
-        WHERE USEWITH = 'INTEGRATION' OR USEWITH = 'OSLC'
+        WHERE USEWITH IN (""" + useWithInClause + """)
     )
 )
 ORDER BY OBJECTNAME, ATTRIBUTENO
@@ -119,12 +151,15 @@ ORDER BY OBJECTNAME, ATTRIBUTENO
 
 pkRows = runQuery(sql_pk)
 
-
 for row in pkRows:
     obj = row["objectname"]
+
+    if obj not in objectMeta:
+        continue
+
     if "primaryKeys" not in objectMeta[obj]:
         objectMeta[obj]["primaryKeys"] = []
-        
+
     objectMeta[obj]["primaryKeys"].append({
         "name": row["attributename"],
         "title": row["title"]
@@ -135,7 +170,7 @@ for row in pkRows:
 # 3. GET ATTRIBUTES
 # =========================================================================
 sql_attributes = """
-SELECT 
+SELECT
     a.objectname,
     a.attributename,
     a.domainid,
@@ -156,7 +191,7 @@ WHERE a.objectname IN (
     WHERE INTOBJECTNAME IN (
         SELECT DISTINCT intobjectname
         FROM MAXINTOBJECT
-        WHERE USEWITH = 'INTEGRATION' OR USEWITH = 'OSLC'
+        WHERE USEWITH IN (""" + useWithInClause + """)
     )
 )
 ORDER BY a.objectname, a.attributename
@@ -164,13 +199,16 @@ ORDER BY a.objectname, a.attributename
 
 attrRows = runQuery(sql_attributes)
 
-# Attach attributes to object metadata
 for row in attrRows:
     obj = row["objectname"]
+
+    if obj not in objectMeta:
+        continue
+
     if "attributes" not in objectMeta[obj]:
         objectMeta[obj]["attributes"] = []
 
-    attr = {
+    objectMeta[obj]["attributes"].append({
         "name": row["attributename"],
         "title": row["title"],
         "remarks": row["remarks"],
@@ -181,10 +219,7 @@ for row in attrRows:
         "required": True if row["required"] == 1 else False,
         "persistent": True if row["persistent"] == 1 else False,
         "attributeno": row["attributeno"]
-    }
-    objectMeta[obj]["attributes"].append(attr)
-    
-    
+    })
 
 
 # =========================================================================
@@ -199,7 +234,7 @@ WHERE parent IN (
     WHERE INTOBJECTNAME IN (
         SELECT DISTINCT intobjectname
         FROM MAXINTOBJECT
-        WHERE USEWITH = 'INTEGRATION' OR USEWITH = 'OSLC'
+        WHERE USEWITH IN (""" + useWithInClause + """)
     )
 )
 ORDER BY parent, name
@@ -207,22 +242,24 @@ ORDER BY parent, name
 
 relRows = runQuery(sql_relationships)
 
-# Attach relationships
 for row in relRows:
     parent = row["parent"]
+
+    if parent not in objectMeta:
+        continue
+
     if "relationships" not in objectMeta[parent]:
         objectMeta[parent]["relationships"] = []
 
-    rel = {
+    objectMeta[parent]["relationships"].append({
         "name": row["name"],
         "target": row["child"],
         "where": row["whereclause"],
         "remarks": row["remarks"]
-    }
-    objectMeta[parent]["relationships"].append(rel)
-    
+    })
+
+
 def toJavaPrimitive(v):
-    """Convert Python primitive -> Java primitive safely"""
     if v is None:
         return None
     if isinstance(v, bool):
@@ -231,14 +268,13 @@ def toJavaPrimitive(v):
         return Integer(v)
     if isinstance(v, float):
         return Double(v)
-    # THIS IS THE IMPORTANT FIX
-    return String(v)  
-    
+    return String(v)
+
+
 def toJsonObject(pyDict):
     jobj = JSONObject()
-    for k, v in pyDict.items():
 
-        # Handle nested Python list -> JSONArray
+    for k, v in pyDict.items():
         if isinstance(v, list):
             arr = JSONArray()
             for item in v:
@@ -248,73 +284,72 @@ def toJsonObject(pyDict):
                     arr.add(toJavaPrimitive(item))
             jobj.put(k, arr)
 
-        # Handle nested Python dict -> JSONObject
         elif isinstance(v, dict):
             jobj.put(k, toJsonObject(v))
 
-        # Java-friendly primitive conversion
         elif isinstance(v, bool):
             jobj.put(k, Boolean(v))
+
         elif isinstance(v, int):
             jobj.put(k, Integer(v))
+
         else:
-            # Strings, None, floats
             jobj.put(k, toJavaPrimitive(v) if v is not None else None)
 
     return jobj
+
 
 # =========================================================================
 # 5. ASSEMBLE FINAL JSON
 # =========================================================================
 result = JSONObject()
 
-# OS -> objects
 osJson = JSONObject()
+
 for osName, objs in osMap.items():
     arr = JSONArray()
     for o in objs:
         arr.add(o)
     osJson.put(osName, arr)
+
 result.put("object_structures", osJson)
 
-# Objects -> metadata
 objectJson = JSONObject()
+
 for obj, meta in objectMeta.items():
     j = JSONObject()
 
-    # Basic metadata
     j.put("description", meta.get("description"))
     j.put("persistent", meta.get("persistent"))
     j.put("servicename", meta.get("servicename"))
-    
+    ext = meta.get("extendsObject")
+    j.put("extendsObject", String(ext) if ext else None)
 
     pkJsonArray = JSONArray()
-    for pk in meta.get("primaryKeys",[]):
+    for pk in meta.get("primaryKeys", []):
         pkJson = JSONObject()
         pkJson.put("name", pk.get("name"))
         pkJson.put("title", pk.get("title"))
         pkJsonArray.add(pkJson)
 
-    j.put("primaryKeys",pkJsonArray)
-    
-   
+    j.put("primaryKeys", pkJsonArray)
 
-    # OS list
     osArr = JSONArray()
     for osName in objectToOS.get(obj, []):
         osArr.add(osName)
+
     j.put("included_in_os", osArr)
 
-    # Attributes
     attrArr = JSONArray()
     for a in meta.get("attributes", []):
         attrArr.add(toJsonObject(a))
+
     j.put("attributes", attrArr)
 
-    # Relationships
     relArr = JSONArray()
     for r in meta.get("relationships", []):
         relArr.add(toJsonObject(r))
+
     j.put("relationships", relArr)
 
     objectJson.put(obj, j)
