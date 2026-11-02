@@ -438,14 +438,24 @@ These tools bypass the metadata sync guard, so they work even during an active s
 
 ### Read-only mode
 
-| Variable       | CLI flag     | Default | Description                                              |
-| -------------- | ------------ | ------- | -------------------------------------------------------- |
-| `MCP_READONLY` | `--readonly` | `false` | Register only the Maximo read path plus diagnostic tools |
+| Variable                | CLI flag              | Default | Description                                                                           |
+| ----------------------- | --------------------- | ------- | ------------------------------------------------------------------------------------- |
+| `MCP_READONLY`          | `--readonly`          | `false` | Register only the Maximo read path plus diagnostic tools                              |
+| `MCP_ENABLE_SCRIPT_GET` | `--enable-script-get` | `false` | With `--readonly`, also register `maximo_invoke_automation_script` in a GET-only form |
 
 When enabled, write tools are not registered. The live surface is `maximo_get_metadata`,
-`os_query_builder` (`opAction=query` only), `ws_load`, `ws_get_records`, `ws_list_attachments`,
-`ws_get_attachment`, plus `mcp_server_status` and `mcp_read_logs`. Working-set writes, context
-tools, audit, status/workflow, and premium configuration tools are omitted.
+`os_query_builder` (`opAction=query` only), `ws_load`, `ws_next_page`, `ws_previous_page`,
+`ws_get_records`, `ws_get_allowed_actions`, `ws_list_attachments`, `ws_get_attachment`,
+`maximo_get_allowed_actions`, `maximo_get_url`, plus `mcp_server_status` and `mcp_read_logs`.
+Working-set writes, context tools, audit, status/workflow (write side), file import,
+`maximo_invoke_action`, `maximo_invoke_automation_script` and premium configuration tools are
+omitted.
+
+`MCP_ENABLE_SCRIPT_GET` is an explicit opt-in for deployments that need to call automation scripts
+from a read-only server. It registers `maximo_invoke_automation_script` with GET only (no
+`httpMethod`, no request body). It is off by default because Maximo does not stop a script from
+changing data on a GET: enable it only if the scripts the API user can reach are safe to run from a
+read-only deployment. It has no effect without `--readonly`.
 
 ### Maximo Developer Copilot mode
 
@@ -495,7 +505,7 @@ Builds a validated OSLC query URL and creates the Working Set session (`wsId`). 
 standard Working Set creation path.
 
 Supports `where` conditions, `select`, `orderBy`, `pageSize`, `childOptions`, `childCollection`,
-and `savedQuery`, plus two additional parent-level filters:
+and `savedQuery`, plus these additional parent-level options:
 
 - **Timeline filters** (`tlrange` / `tlattribute`): a date-math range around an index date, for
   example `tlrange="-3M"`, `tlattribute="reportdate"` for "reported in the last 3 months".
@@ -506,6 +516,16 @@ and `savedQuery`, plus two additional parent-level filters:
   an attribute bound to a synonym domain (for example WOSTATUS) rather than its external display
   value. Format is `<attrName>=val1,val2,...` for an IN match, or `<attrName>!=val1,val2,...`
   for a NOT IN match. It is independent of `where` and is combined with it using AND.
+- **Inline schema** (`addschema`): inlines the JSON schema for this exact query's `select`
+  (attributes, child blocks, `rel.<name>{...}` nesting) into the response alongside the data, in
+  the same call. Surfaced by `ws_load` as `meta.schema`, passed through as Maximo returns it since
+  its shape depends on how deep `select` goes. Maximo does not carry this flag onto its own
+  next-page `href`, so paging past the first page needs `addschema:true` set again on that page's
+  own `os_query_builder` call.
+- **Page-number paging** (`pageno`): jumps directly to page N (1-based) of a `pageSize`'d
+  result. Maximo's own `nextPage.href` is this same query with `pageno=<n>` appended, so it is a
+  real, safe input. Prefer `ws_next_page` / `ws_previous_page` on an already-loaded working set
+  over re-deriving `pageno` yourself -- see [Working Set tools](#working-set-tools) below.
 
 Related data is available three ways, and each wants a different name; the wrong one returns
 empty rows rather than an error:
@@ -530,11 +550,14 @@ and must be explicitly committed.
 
 #### Read and load
 
-| Tool             | What it does                                   |
-| ---------------- | ---------------------------------------------- |
-| `ws_load`        | Loads records from Maximo into the working set |
-| `ws_get_records` | Returns loaded records from working set memory |
-| `ws_get_active`  | Returns the current active record              |
+| Tool                     | What it does                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------- |
+| `ws_load`                | Loads records from Maximo into the working set                                        |
+| `ws_next_page`           | Loads the next page into the same working set, following Maximo's own `nextPage` link |
+| `ws_previous_page`       | Loads the previous page, following Maximo's own `previousPage` link                   |
+| `ws_get_records`         | Returns loaded records from working set memory                                        |
+| `ws_get_allowed_actions` | Allowed actions for every record the working set's query matches, in one call         |
+| `ws_get_active`          | Returns the current active record                                                     |
 
 Both `ws_load` and `ws_get_records` support `useLean=true` for a large reduction in token usage
 on large result sets.
@@ -542,6 +565,17 @@ on large result sets.
 When the query sets `collectioncount: true`, `ws_load` returns `meta.totalCount` (total records
 matching in Maximo), `meta.count` (rows in this page), and `meta.hasMore`. Totals survive lean
 encoding, so answer "how many" from `totalCount`, never from the page length.
+
+Whenever Maximo returns paging links, `ws_load` also returns `meta.paging`
+(`pagenum`/`totalPages`/`nextPage`/`previousPage`). `ws_next_page` and `ws_previous_page` follow
+those links directly, replacing the working set's loaded records with that page's -- the same
+records area `ws_load` populates, so `ws_get_records` / `ws_set_active` keep working unchanged
+on whichever page is current. Both refuse to move if Maximo didn't return that link, and refuse
+if the working set has staged edits on the current page (`ws_commit` or `ws_discard` first,
+since replacing the records would silently discard them).
+
+When the query sets `addschema: true`, `ws_load` also returns `meta.schema` -- the JSON schema
+Maximo inlined for this exact `select`, passed through as-is.
 
 #### Stage changes
 
@@ -588,18 +622,22 @@ and execute, letting Maximo act as the final authority.
 
 #### Status change
 
-Status changes are executed through Maximo's `changeStatus` action, not as field updates. Use
-the two-tool pattern below to enforce user review before execution.
+Status changes are executed through a wsmethod action, not as field updates. The action's name
+is not fixed across object structures -- MXAPIWO exposes `changeWOStatus`, not a generic
+`changeStatus` -- so it is auto-detected from the record's own `allowedactions` (the wsmethod
+described "Change Status") rather than assumed. Use the two-tool pattern below to enforce user
+review before execution.
 
 **`maximo_plan_status_change`** validates a proposed status transition and returns a preview
-without making any changes. It fetches the current status, checks `allowedactions` to confirm
-`changeStatus` is permitted, and returns the current status, target status, transition verdict,
-and the full allowed-actions list. Always call this first, and show the result to the user
-before proceeding.
+without making any changes. It fetches the current status, auto-detects the status-change action
+and checks it is currently permitted, and returns the current status, target status, detected
+action name, transition verdict, and the full allowed-actions list. Always call this first, and
+show the result to the user before proceeding. Pass `actionName` to override the auto-detection
+if it picks the wrong one (or none) for your object structure.
 
-**`maximo_change_status`** executes the status transition after user confirmation. It calls
-`getAllowedActions` again immediately before execution to guard against race conditions, and
-rejects the request if `changeStatus` is not in the allowed actions.
+**`maximo_change_status`** executes the status transition after user confirmation. It re-checks
+allowed actions immediately before execution to guard against race conditions, and rejects the
+request if the detected (or given) action is not in the allowed actions.
 
 Example flow:
 
@@ -609,6 +647,18 @@ Example flow:
 3. -- show the plan to the user, get confirmation
 4. maximo_change_status osName=MXAPIWO restId=12345 newStatus=CLOSE memo="Job complete"
 ```
+
+#### File import
+
+**`maximo_import_file`** uploads a CSV (FLAT, header row first) or XML document through an
+object structure using Maximo's REST file import. `preview` defaults to true: Maximo validates
+the document and returns total, valid and invalid record counts plus per-record warnings without
+writing anything. Show that to the user, then call again with `preview:false` to import. Use
+`async:true` (with an optional `name`) for large loads. The object structure must have "Support
+Flat Structure" enabled for CSV. Not available under `--readonly`.
+
+**`maximo_import_file_status`** polls an async import using the `statusUrl` returned by
+`maximo_import_file`.
 
 #### Workflow
 
@@ -638,6 +688,65 @@ Example flow:
 2. -- returns ownerid=5678, ownertable=WORKORDER, _allowedActions=[wfappr, wfcanreq]
 3. maximo_send_workflow_response osName=MXAPIWO restId=5678 actionName=wfappr params={memo:"Approved"}
 ```
+
+#### Generic action tools
+
+`maximo_change_status` and `maximo_send_workflow_response` are themselves narrow wrappers over
+"check allowedactions, then invoke" -- one for status transitions, one for workflow responses.
+These tools expose that same mechanism directly, for any other action Maximo allows on a record.
+
+**`maximo_get_allowed_actions`** (read-only) lists every action currently allowed on one record
+-- wsmethod actions (custom/automation-script-backed, e.g. `changeWOStatus`, `startTimer`) and
+system actions (core Maximo REST actions, e.g. `discardedit`, `genreport`, `sigopgranted`). For
+each action it returns `httpmethod` (GET actions take parameters as a query string, POST actions
+take a JSON body), a `description` when Maximo provides one, and -- when Maximo documents it --
+the expected request body (`requestSchema`) or query parameters (`requestQueryParams`), so you
+know what to pass before invoking rather than guessing.
+
+**`maximo_invoke_action`** (write) invokes any allowed action by name on one record. It
+re-checks the action is still allowed immediately before invoking, then dispatches with the
+correct HTTP method and action-key prefix per Maximo's own descriptor (`wsmethod:<name>` for
+wsmethod actions, the bare name for system actions).
+
+**`ws_get_allowed_actions`** (read-only, on the working set) returns allowed actions for every
+record a working set's query currently matches, in one call -- it re-runs that exact query (same
+`oslc.where`/`pageSize`/`pageno`) with `oslc.select` overridden to `allowedactions`, instead of
+one `maximo_get_allowed_actions` call per record. Does not require the working set to be loaded,
+and does not change its loaded records.
+
+Example flow:
+
+```
+1. maximo_get_allowed_actions osName=MXAPIWO restId=12345
+   -- returns e.g. startTimer (POST, no body), islocked (GET, no params)
+2. maximo_invoke_action osName=MXAPIWO restId=12345 actionName=startTimer
+```
+
+#### Automation scripts
+
+**`maximo_invoke_automation_script`** (write) runs an automation script by name through its REST
+endpoint (`/api/script/<name>`) and returns the HTTP status and response body. The script must
+exist and be active; it does not need a launch point. Use `httpMethod: GET` for read/query-style
+scripts, or `POST` with a JSON `body` that the script reads from its `request` implicit variable;
+`params` adds query-string parameters. The script runs immediately with no preview, and a script
+can change data even when invoked with GET, so only invoke scripts you trust. Not available under
+`--readonly` unless the operator sets `MCP_ENABLE_SCRIPT_GET`, which registers a GET-only form.
+
+#### Generic URL read
+
+**`maximo_get_url`** (read-only, included in `--readonly`) performs a GET against any URL on the
+configured Maximo and returns the raw response -- status, content type and body -- for endpoints
+no dedicated tool covers, such as `/oslc/whoami`, `/api/os/mxapiwo/<restId>/woactivity` or
+`/api/error/messages/BMXAA4195E`. `url` is a path on the Maximo (the context root is added for
+you) or a full URL on the same host; `params` adds query parameters and `headers` adds request
+headers. JSON responses are returned parsed; large bodies are truncated at `maxBytes` (default 200000) and binary bodies are omitted (use `ws_get_attachment` for files).
+
+It stays read-only by construction: GET only; same Maximo host only, so the server's credentials
+are never sent elsewhere; redirects are not followed; credential headers (`apikey`, `cookie`,
+`authorization`, `maxauth`) cannot be set; and `action=` query parameters and `/api/script` or
+`/oslc/script` paths are refused, because Maximo can run code or change data on a plain GET --
+use `maximo_invoke_action` or `maximo_invoke_automation_script` for those. Prefer
+`os_query_builder` plus `ws_load` for record queries.
 
 ---
 
@@ -762,7 +871,7 @@ the log file list.
 
 The same base layer described in this document is also available as a premium edition that adds
 a set of Maximo configuration-management tools: Configure Database, Admin Mode control, system
-property management, read-only SQL, cache reload, automation-script invocation, Application
+property management, read-only SQL, cache reload, Application
 Designer presentation editing, and configuration safety guards. These tools are not included in
 this npm package.
 
