@@ -1,6 +1,10 @@
 # Security & Audit
 
 The server is built for governed, enterprise use. Three mechanisms keep writes controlled and traceable.
+Around them: every request is pinned to the configured `MAXIMO_URL` (a foreign host is refused with
+`HOST_NOT_ALLOWED`, and credentials never follow a redirect to another host), `--readonly` and
+`--disabled-tools` limit which tools exist, and `--caller-apikey` runs each HTTP request as the Maximo
+user whose API key it carries.
 
 ## App-level permission gates
 
@@ -42,6 +46,6 @@ Set `AUDIT_ENABLED=true` to record every staged Working Set operation to an appe
 
 ## Defense in depth
 
-- **Nothing writes without a preview.** The staged model guarantees a human-readable diff before any commit.
+- **Nothing writes without a preview.** The staged model guarantees a human-readable diff before any working-set commit; status changes, workflow routing, attachments and imports plan before they confirm.
 - **Validation is advisory, Maximo is authoritative.** The server surfaces warnings but lets Maximo enforce the real rules.
 - **Least surprise on children.** Natural-key diffing means untouched child rows are never disturbed — see [Child Records](/concepts/child-records).

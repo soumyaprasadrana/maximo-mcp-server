@@ -1,14 +1,14 @@
 # Versions and access
 
-Single source of truth for what is publicly installable and what is available on request.
+Single source of truth for what is publicly installable.
 If any other page disagrees with this one, this page is correct.
 
 ## At a glance
 
 | Product | Published | Current line |
 |---------|-----------|--------------|
-| **maximo-mcp-server** | **1.3.7** (npm) | **1.5.0** -- on request |
-| **maximo-kit** | **0.1.1** (GitHub Releases) | **0.4.0** -- on request |
+| **maximo-mcp-server** | **2.0.0** (npm) | **2.1.0** -- next npm release |
+| **maximo-kit** | **0.1.1** (GitHub Releases) | **0.5.0** -- on request |
 
 Contact: **soumyaprasad.rana@gmail.com**
 
@@ -16,76 +16,89 @@ Contact: **soumyaprasad.rana@gmail.com**
 
 | | Version | How to get it |
 |---|---|---|
-| **Published (npm)** | **1.3.7** | `npm install -g @soumyaprasadrana/maximo-mcp-server` |
-| **Current line** | **1.5.0** | On request -- see [Contact](#contact) |
+| **Published (npm)** | **2.0.0** | `npm install -g @soumyaprasadrana/maximo-mcp-server` |
+| **Next release** | **2.1.0** | Built, pending publish -- then the same `npm install` |
 
-**1.3.7 is the last version published to the npm registry.** Development continued through
-1.4.1, 1.4.2, 1.4.5 and 1.5.0, but those builds are not on the public registry. There is no
-later public tag to install: `npm install` gives you 1.3.7, and that is expected.
+**One package, every tool.** Everything the server can do ships in the npm package -- reads,
+working-set writes, status changes, workflow, reports, async commits and the configuration
+tools (Configure Database, Admin Mode, system properties, read-only SQL, live cache reload, App
+Designer editing). There are no paid tiers and no separate builds. What you enable is your
+choice: `--readonly` keeps the read path only, the ten configuration tools register only with
+`--copilot-mode`, and `--disabled-tools` hides any tool.
 
-The install instructions throughout this site remain valid and supported. They describe the
-last public registry version, not an abandoned one.
+**License.** The software is free to use, but it is not open source. It is proprietary and free
+for non-commercial use (personal, educational, research) under the terms in [LICENSE](https://github.com/soumyaprasadrana/maximo-mcp-server/blob/main/LICENSE).
+For commercial use or redistribution, contact the author.
 
-### What 1.4.x - 1.5.0 added (not on npm)
+**2.0.0 is the current npm release** (2026-11-06).
 
-**Configuration safety guards.** Some Maximo configuration writes are accepted without error
-while altering far more than the record you edited -- a class of platform pitfall the guards
-catch at preview so it never reaches your instance. The clearest example is Same As: over the
-REST API, an attribute whose type or length does not match its master is propagated across the
-whole inheritance family, and on a common shared key that can be hundreds of attributes across
-dozens of objects, with no error raised. The `sameas-parity` guard enforces the match before
-anything is sent.
+### What 2.1.0 adds over 2.0.0
 
-**Configure Database, end to end.**
+- **Security:** every request is pinned to the configured Maximo (the API key can no longer be
+  sent to another host through `basePath` or a foreign URL); credentials never follow redirects.
+- **Workflow:** open assignments with their routes, `maximo_complete_workflow_assignment` and
+  `maximo_start_workflow`.
+- **Status changes** are checked against Maximo's next-status list.
+- **New read-only tools:** `maximo_lookup_values` (incl. table domains), `maximo_aggregate`
+  (group by), `maximo_list_reports` / `maximo_run_report` (BIRT), `maximo_integration_errors`,
+  and opt-in `maximo_read_server_log`.
+- **`ws_add_attachment`**, response and concurrency limits, truthful auth errors (MAS login
+  redirects, BMXAA reasons), `mcp_server_status` on every server.
 
-| Tool | What it does | Gate |
-|------|--------------|------|
-| `maximo_dbconfig_status` | Read-only config level (`NONE` / `NONSTRUCT` / `STRUCT`), Admin Mode state, permissions held | read-only |
-| `maximo_dbconfig_apply_status` | Read-only poll -- one phase: `CLEAN` / `PENDING` / `RUNNING` | read-only |
-| `maximo_dbconfig_discard` | Discard **pending** configuration; nothing applied is touched | confirm + IBM `CONFIGUR.REMOVE` |
-| `maximo_dbconfig_apply` | Apply Configuration Changes -- alters physical schema | confirm + token + IBM `CONFIGUR.CONFIGURE` |
-| `maximo_admin_mode` | Start / end / cancel an Admin Mode transition | confirm + IBM `CONFIGUR.ADMINMODE` |
+### What 2.0.0 added over 1.4.16
 
-Only `STRUCT` changes need Admin Mode, so a non-structural change no longer costs a
-maintenance window it never required.
+- **One edition:** the configuration tools and `ws_commit_status` joined the npm package.
+  Breaking: the ten configuration tools need `--copilot-mode`.
+- **Tool exposure control:** `MCP_DISABLED_TOOLS` / `--disabled-tools` hides any tool.
+- **Per-caller identity over HTTP:** `--caller-apikey` runs each request as the Maximo user
+  whose API key it carries; working sets become private to their creator.
+- **On-demand metadata:** `--reconcile-lazy` -- no startup sync; each object structure is
+  fetched the first time a tool needs it.
+- **Working sets that survive a restart:** `--ws-persist`, with crash-safe commits.
+- **No native embedding dependencies:** `@xenova/transformers` and `onnxruntime-node` are no
+  longer installed; `MCP_EMBEDDINGS_MODE=local` needs a manual install (breaking for `local` users).
+- **Read-only mode** also registers `ws_remove`.
+- **Security:** `maximo_get_url` checks the decoded servlet path, so an encoded or
+  `;`-suffixed script path cannot pass as a read.
 
-**Diagnostics and configuration access.** `maximo_sql_query` (read-only SQL, single `SELECT`,
-DML/DDL refused server-side, human approval on every call), `maximo_system_property`
-(get / list / set), and `maximo_copilot_setup` (install / inspect / remove the utility scripts,
-dry-run by default). Full reference: [Copilot Tools](/tools/copilot).
+### Read-only mode
 
-Access is enforced by Maximo itself: each utility carries a signature option on an existing
-IBM application, and an administrator must grant it. The server never writes
-`APPLICATIONAUTH`, and privileged actions additionally require the genuine IBM permission.
+`--readonly` registers: `maximo_get_metadata`, `os_query_builder` (query only), `ws_load`,
+`ws_next_page`, `ws_previous_page`, `ws_get_records`, `ws_remove`, `ws_get_allowed_actions`,
+`ws_list_attachments`, `ws_get_attachment`, `maximo_get_allowed_actions`, `maximo_get_url`,
+`maximo_get_workflow_assignments`, `maximo_lookup_values`, `maximo_aggregate`,
+`maximo_list_reports`, `maximo_run_report`, `maximo_integration_errors`, plus the MCP
+diagnostics. `MCP_ENABLE_SCRIPT_GET` optionally adds a GET-only
+`maximo_invoke_automation_script`; `MCP_ENABLE_SERVER_LOGS` adds `maximo_read_server_log`.
 
-**Reliability.** Asynchronous commit with polling for configuration commits that outlive an
-MCP client timeout; a dedicated long-operation connection pool so slow commits are not severed
-mid-flight; and failures that stop reporting themselves as successes, with Maximo's `BMXAA*`
-codes surfaced verbatim.
+### Earlier releases
 
-Full history: [CHANGELOG](https://github.com/soumyaprasadrana/maximo-mcp-server/blob/main/CHANGELOG.md).
+Everything before 2.0.0 -- the query builder, paging, generic actions, status changes
+with electronic signatures, file import, the App Designer delta-edit, the configuration safety
+guards and async commits -- is recorded in [CHANGELOG.md](https://github.com/soumyaprasadrana/maximo-mcp-server/blob/main/CHANGELOG.md).
 
 ## maximo-kit
 
-The Spec Kit extension that drives this server through a design-first, recipe-driven
-configuration workflow.
-
 | | Version | How to get it |
 |---|---|---|
-| **Published (GitHub Releases)** | **0.1.1** | [Releases page](https://github.com/soumyaprasadrana/maximo-kit/releases) |
-| **Current line** | **0.4.0** | On request -- see [Contact](#contact) |
+| **Published (GitHub Releases)** | **0.1.1** | Release asset URLs on the [Releases page](https://github.com/soumyaprasadrana/maximo-kit/releases) |
+| **Current line** | **0.5.0** | On request -- see [Contact](#contact) |
 
-**0.1.1 is the last public release**, and no further public releases are planned for now.
-0.4.0 is the current line and it moves forward, but that work is not distributed publicly.
+**0.1.1 is the last public release** of the kit, and no further public releases are planned for
+now. The kit has continued to develop -- **0.5.0** is the current line and it moves forward --
+but that work is not distributed publicly.
 
-Repository: [maximo-kit](https://github.com/soumyaprasadrana/maximo-kit) --
-documentation: <https://soumyaprasadrana.github.io/maximo-kit/>
+The 0.1.1 install instructions remain valid. That release was the on-ramp: it shows the shape
+of the workflow (design -> plan -> stage -> preview -> validate -> approve -> commit -> verify)
+and enough recipes to be useful on its own.
 
-## Why it is arranged this way
+### What 0.5.0 holds (not public)
 
-The documentation stays public deliberately. Anyone can read how the tools work, what the
-Object Structures are, which gates exist and why, and follow what the product can do as it
-develops. What is gated is the current distribution, not the knowledge.
+24 change/analyze recipes, 5 playbooks, 15 commands and 70 knowledge files, plus the
+evidence-backed rules earned from live runs -- Same As parity, domain/attribute parity,
+the Configure Database lifecycle, presentation and lookup anatomy, and the delete-capability
+matrix. 0.5.0 adds per-phase evidence artifacts for multi-commit changes and adopts the
+maximo-mcp-server App Designer delta-edit lifecycle for presentation edits.
 
 ## Contact
 
@@ -93,6 +106,11 @@ develops. What is gated is the current distribution, not the knowledge.
 
 Get in touch for:
 
-- **maximo-mcp-server 1.5.0** (anything newer than the public 1.3.7)
-- **maximo-kit 0.4.0** and onward
-- evaluation, partnership, or private / tailored builds
+- a **commercial licence** for maximo-mcp-server
+- **maximo-kit 0.5.0** and onward
+- evaluation or partnership
+
+Public repositories:
+
+- [maximo-mcp-server](https://github.com/soumyaprasadrana/maximo-mcp-server)
+- [maximo-kit](https://github.com/soumyaprasadrana/maximo-kit)

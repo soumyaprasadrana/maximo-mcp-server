@@ -38,17 +38,23 @@ The Working Set is a **stateful, in-memory transaction**. Reads load records; ev
 | Query building | `os_query_builder` — validated OSLC, creates the Working Set |
 | Staged CRUD | Load, update, multi/batch update, create (draft flow), delete, child add/remove |
 | Preview & commit | `ws_preview_changes` (diff + warnings) → `ws_commit` |
-| Business process | Status transitions and workflow approvals via Maximo actions |
-| Attachments | List and fetch record doclinks |
+| Status changes | Plan, then confirm -- checked against Maximo's valid next statuses and electronic signatures |
+| Workflow | Open assignments with their routes, complete an assignment, start a process (plan, then confirm) |
+| Answers | `maximo_aggregate` (group-by counts and sums), `maximo_lookup_values` (valid values for any field, incl. table domains) |
+| Reports | `maximo_list_reports` / `maximo_run_report` -- BIRT reports as PDF |
+| Attachments | List, fetch and upload (`ws_add_attachment`) record doclinks |
+| Actions, import, scripts | Any allowed Maximo action, CSV/XML import with a preview, automation scripts, read-only GET of any Maximo URL |
+| Operations | `maximo_integration_errors`; opt-in `maximo_read_server_log` |
+| Configuration | Configure Database, Admin Mode, system properties, read-only SQL, cache reload, App Designer edits -- with `--copilot-mode` |
 | Context store | Six `ctx_*` key-value tools for cross-tool agent state |
 | OAuth 2.0 | Built-in authorization server for HTTP transport |
 | Audit | Optional append-only log of every staged change |
-| Diagnostics | Dev-mode `mcp_server_status` / `mcp_read_logs` |
+| Diagnostics | `mcp_server_status` (always); `mcp_read_logs` with `--dev-mode` or `--readonly` |
 
 ## Design principles
 
 - **Discover, then act.** Metadata first; no blind field names.
-- **Nothing is silent.** Every write goes through a preview a human can read.
+- **Nothing is silent.** Data changes go through a preview a human can read; the generic action and script tools, which do not, can be disabled.
 - **Maximo is the source of truth.** Validation warnings are advisory; the server does not block commits on its own opinion.
 - **Least surprise on children.** Child-collection edits are diffed by natural key so untouched rows are never disturbed. See [Child Records](/concepts/child-records).
 

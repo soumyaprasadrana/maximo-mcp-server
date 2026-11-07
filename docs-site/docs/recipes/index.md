@@ -63,19 +63,21 @@ See [Child Records](/concepts/child-records) for how the Add/Change/Delete diff 
 ## Pattern F — Workflow approval
 
 ```
-1. maximo_get_workflow_assignments  personId={me} includeAllowedActions=true
-2. → identify assignment: ownerid + ownertable + _allowedActions
-3. → present to the user: "WO-1234 is waiting for your approval"
-4. maximo_send_workflow_response    osName, restId=ownerid, actionName=wfappr
+1. maximo_get_workflow_assignments      ownerId=1234 (or personId / processName)
+   -> each assignment: assignmentId, owner.table + owner.id, choices (onAccept / onReject)
+2. maximo_complete_workflow_assignment  assignmentId, accepted=true, memo   (plan only)
+3. -> present the plan to the user: "WO 1234 -- approve (route: APPR)?"
+4. maximo_complete_workflow_assignment  same arguments + confirm=true
+   -> input_node_reached: the next step needs a choice only the Maximo Inbox can make
 ```
 
-## Pattern G — Diagnose a stalled sync *(dev mode)*
+## Pattern G -- Diagnose a stalled sync
 
 ```
 1. mcp_server_status
    → read sync.currentStageName, sync.progress.percentComplete
    → read sync.checkpoint (last persisted stage) and sync.lastError
-2. mcp_read_logs  level=error  lines=50
+2. mcp_read_logs  level=error  lines=50     (--dev-mode or --readonly)
    → look for network errors, script failures, or auth issues
 ```
 

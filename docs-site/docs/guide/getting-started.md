@@ -26,7 +26,7 @@ In Maximo:
 4. **Activate** the script
 
 ::: warning
-Without this script the server still starts, but metadata sync fails and every tool returns `metadata_sync_in_progress`.
+Without this script the server still starts, but metadata sync fails and every tool returns `metadata_sync_in_progress` (or `metadata_fetch_failed` with `--reconcile-lazy`).
 :::
 
 ## Step 2 — Install the server
@@ -92,6 +92,7 @@ MAXIMO_API_KEY=your-api-key
 MCP_DATA_BASE_DIR=/opt/maximo-mcp
 MCP_LOGS_DIR=/opt/maximo-mcp/logs
 MCP_TRANSPORT=stdio
+MCP_RECONCILE_LAZY=true
 ```
 
 :::
@@ -111,12 +112,13 @@ On first startup the server downloads all Object Structure metadata. On large en
 | 2. Schemas | JSON schema for each OS |
 | 3. MBO metadata | Object/attribute/relationship data via `MAXMCPMETADATA` |
 
-While sync runs, tool calls return `metadata_sync_in_progress` with the current stage and percentage. Start with `--dev-mode` and use `mcp_server_status` / `mcp_read_logs` to watch progress from inside the agent.
+While sync runs, tool calls return `metadata_sync_in_progress` with the current stage and percentage. `mcp_server_status` (always registered) shows progress from inside the agent; `--dev-mode` adds `mcp_read_logs`.
 
 Sync startup modes:
 
 | Mode | Flag | Behaviour |
 | --- | --- | --- |
+| On demand (recommended) | `--reconcile-lazy` | No startup sync: ready in seconds; each Object Structure's metadata is fetched the first time a tool needs it and cached (`MCP_RECONCILE_LAZY_TTL`) |
 | Fire-and-forget (default) | *(none)* | Server starts immediately; sync runs in-process in the background |
 | Synchronous | `--reconcile-sync` | Server blocks until sync completes before accepting connections |
 | Background worker | `--bg-sync-worker` | Sync runs as a detached child process; a file lock prevents duplicates |

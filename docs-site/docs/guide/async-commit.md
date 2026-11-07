@@ -18,8 +18,8 @@ known to be slow.
 The same two steps apply to every Object Structure that uses this path:
 
 ```
-ws_commit         →  { async: true, asyncId, workingSetId, osName, status: "running" }
-ws_commit_status  →  running | succeeded | failed  (+ the full commit result)
+ws_commit         ->  { async: true, asyncId, workingSetId, osName, status: "running" }
+ws_commit_status  ->  running | succeeded | failed | interrupted  (+ the full commit result)
 ```
 
 ### 1. Start
@@ -167,9 +167,11 @@ before committing again**, or you risk a duplicate or a collision.
 
 ## Limits
 
-Commit jobs live in the server process. A restart loses them — the same is already true of
-Working Sets, so this adds no new failure mode, but after a restart the way to establish
-what happened is `os_query_builder` against Maximo, not `ws_commit_status`.
+Commit jobs live in the server process. Without `--ws-persist` a restart loses them (as it loses
+Working Sets); after a restart the way to establish what happened is `os_query_builder` against
+Maximo, not `ws_commit_status`. With `--ws-persist` every job change is saved: a finished job's
+result is still pollable after a restart, and a job that was running when the server stopped is
+reported as `interrupted` -- outcome unknown, verify in Maximo, never retried automatically.
 
 Jobs are also **per process**. Under `http` transport with more than one replica, a poll can
 land on an instance that does not own the job and get `commit_job_not_found`; the same applies

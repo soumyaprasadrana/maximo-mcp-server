@@ -56,7 +56,13 @@ On success the Working Set resets. Use `ws_discard` to drop staged edits while k
 
 ## Session TTL
 
-Working Sets are evicted after a period of inactivity (a sliding TTL, refreshed on each access). `ws_load` and `ws_set_active` return a `wsExpiresAt` timestamp so clients can see when the session will expire. After eviction, the next call returns `ws_not_found` — rebuild with `os_query_builder`.
+Working Sets are evicted after a period of inactivity (a sliding TTL, refreshed on each access). `ws_load` and `ws_set_active` return a `wsExpiresAt` timestamp so clients can see when the session will expire. After eviction, the next call returns `ws_not_found` -- rebuild with `os_query_builder`. The TTL is `MCP_WS_TTL_MINUTES` (default 15).
+
+## Persistence
+
+By default a Working Set lives in the server's memory, so a restart loses it. With `MCP_WS_PERSIST=true` the server also keeps each Working Set in `<data-dir>/data/workingsets.db`: every set a tool call changed is written at the end of that call, and a set that is not in memory is rebuilt from the store on first use. Tool behaviour is identical either way.
+
+A commit is written as "in progress" before anything is sent to Maximo. If the server stops during a commit, the restored Working Set refuses `ws_commit` with `commit_outcome_unknown` until you verify the records and `ws_discard` (a reload alone keeps the hold) -- so staged changes are never sent twice. If that write-ahead save fails, the commit is refused with `persist_failed` and nothing is sent. A background commit that was running at the time reports `interrupted` from `ws_commit_status`.
 
 ## Active record
 

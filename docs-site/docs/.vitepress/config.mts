@@ -63,7 +63,7 @@ export default defineConfig({
       {
         // Label reflects the last PUBLISHED npm version, not the current dev line.
         // Keep it in step with /versions.md.
-        text: "v1.3.7 (npm)",
+        text: "v2.0.0 (npm)",
         items: [
           { text: "Versions and access", link: "/versions" },
           { text: "npm package", link: NPM },
@@ -102,7 +102,7 @@ export default defineConfig({
           text: "Tool Reference",
           items: [
             { text: "All Tools", link: "/tools/" },
-            { text: "Copilot Tools (v1.5.0)", link: "/tools/copilot" },
+            { text: "Copilot Tools", link: "/tools/copilot" },
           ],
         },
       ],
@@ -125,7 +125,7 @@ export default defineConfig({
     },
 
     footer: {
-      message: "Released under the package LICENSE.",
+      message: "Proprietary software, free for non-commercial use. Not open source -- see LICENSE.",
       copyright: "© Soumya Prasad Rana",
     },
   },

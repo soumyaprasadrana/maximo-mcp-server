@@ -1,207 +1,56 @@
-# maximo-mcp-server
+# Maximo MCP Server
 
 [![npm version](https://img.shields.io/npm/v/@soumyaprasadrana/maximo-mcp-server.svg)](https://www.npmjs.com/package/@soumyaprasadrana/maximo-mcp-server)
 [![npm downloads](https://img.shields.io/npm/dm/%40soumyaprasadrana%2Fmaximo-mcp-server.svg)](https://www.npmjs.com/package/@soumyaprasadrana/maximo-mcp-server)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-339933.svg)](https://nodejs.org)
-[![Repository](https://img.shields.io/badge/repo-github-black.svg)](https://github.com/soumyaprasadrana/maximo-mcp-server)
+[![Docs](https://img.shields.io/badge/docs-online-blue.svg)](https://soumyaprasadrana.github.io/maximo-mcp-server)
 
-An MCP (Model Context Protocol) server for IBM Maximo Application Suite. It gives AI agents a
-governed way to discover Maximo metadata, build validated OSLC queries, and stage, preview, and
-commit business-data changes -- without hand-written REST calls.
+**Give AI agents safe, governed access to IBM Maximo.**
 
-## Key capabilities
-
-- Metadata-aware discovery and OSLC query construction, validated against live Maximo schema
-- A stateful Working Set model: load records, stage changes, preview a diff, then commit
-- Business process tools for status transitions and workflow approvals
-- Built-in OAuth 2.0 authorization server for HTTP transport
-- Strict tool schemas compatible with IBM watsonx Orchestrate
-- Resumable metadata sync with per-stage checkpoints, safe to interrupt and restart
-- Optional read-only mode and diagnostic tools for operational visibility
-
-This package is the public edition, covering the full data-access surface described below. A
-premium edition adds a set of Maximo configuration-management tools on top of the same base;
-see [Premium edition](#premium-edition).
-
-## Architecture
-
-```text
-AI Agent (MCP Client)
-        |
-        | MCP (stdio / http + OAuth 2.0)
-        v
-maximo-mcp-server
-  |- Metadata Engine       (SQLite, resumable sync, optional vector search)
-  |- OS Query Builder      (metadata-validated OSLC queries)
-  |- Working Set Engine    (stateful session, staged changes, audit)
-  |- Business Process Tools (status change, workflow)
-  |- OAuth 2.0 Server      (client_credentials grant, JWT, HTTP transport)
-  |- Diagnostic Tools      (log streaming, server status)
-        |
-        v
-IBM Maximo REST / OSLC APIs
-```
-
----
-
-## Prerequisites
-
-- Node.js 20 or later
-- npm 10 or later
-- Network access to your Maximo instance
-- The `MAXMCPMETADATA` automation script deployed in Maximo (mandatory, see below)
-
-```bash
-node -v   # must be >= 20
-npm -v
-```
-
-### Deploy the MAXMCPMETADATA automation script (mandatory)
-
-The metadata engine requires this script to extract object and attribute metadata from Maximo.
-Without it the server starts, but metadata sync fails and every tool call returns
-`metadata_sync_in_progress`.
-
-- Script name: `MAXMCPMETADATA`
-- Source: `https://raw.githubusercontent.com/soumyaprasadrana/maximo-mcp-server/refs/heads/main/MAXMCPMETADATA.py`
-
-Deploy steps in Maximo Administration:
-
-1. Go to System Configuration -> Platform Configuration -> Automation Scripts
-2. Create a new script named `MAXMCPMETADATA`
-3. Paste the content from the URL above
-4. Activate the script
-
----
-
-## Installation
+Agents look up the schema before they query, stage every change, show a diff, and write to Maximo
+only after a human says yes. Works with Claude, Cursor, Copilot Studio, watsonx Orchestrate and any
+MCP client -- over stdio or HTTP.
 
 ```bash
 npm install -g @soumyaprasadrana/maximo-mcp-server
 ```
 
-Verify:
-
-```bash
-maximo-mcp-server --version
-maximo-mcp-server --help
-```
-
----
-
-## Starting the server
-
-### Option 1: environment variables
-
-```bash
-export MAXIMO_URL="https://your-maximo-host/maximo"
-export MAXIMO_API_KEY="your-api-key"
-export MCP_DATA_BASE_DIR="/opt/maximo-mcp"
-export MCP_LOGS_DIR="/opt/maximo-mcp/logs"
-
-maximo-mcp-server
-```
-
-Windows PowerShell:
-
-```powershell
-$env:MAXIMO_URL        = "https://your-maximo-host/maximo"
-$env:MAXIMO_API_KEY    = "your-api-key"
-$env:MCP_DATA_BASE_DIR = "C:\maximo-mcp"
-$env:MCP_LOGS_DIR      = "C:\maximo-mcp\logs"
-
-maximo-mcp-server
-```
-
-### Option 2: CLI flags
-
-```bash
-maximo-mcp-server \
-  --maximo-url     "https://your-maximo-host/maximo" \
-  --maximo-api-key "your-api-key" \
-  --data-dir       /opt/maximo-mcp \
-  --logs-dir       /opt/maximo-mcp/logs
-```
-
-HTTP transport with diagnostics enabled:
-
-```bash
-maximo-mcp-server \
-  --maximo-url     "https://your-maximo-host/maximo" \
-  --maximo-api-key "your-api-key" \
-  --transport      http \
-  --port           8001 \
-  --data-dir       /opt/maximo-mcp \
-  --logs-dir       /opt/maximo-mcp/logs \
-  --dev-mode
-```
-
-Read-only surface (query and working-set reads plus diagnostics, no write tools):
-
-```bash
-maximo-mcp-server \
-  --maximo-url     "https://your-maximo-host/maximo" \
-  --maximo-api-key "your-api-key" \
-  --data-dir       /opt/maximo-mcp \
-  --logs-dir       /opt/maximo-mcp/logs \
-  --readonly
-```
-
-Force a full metadata re-sync:
-
-```bash
-maximo-mcp-server \
-  --maximo-url     "https://your-maximo-host/maximo" \
-  --maximo-api-key "your-api-key" \
-  --data-dir       /opt/maximo-mcp \
-  --force-reconcile
-```
-
-### Option 3: .env file
-
-```dotenv
-MAXIMO_URL=https://your-maximo-host/maximo
-MAXIMO_API_KEY=your-api-key
-MCP_DATA_BASE_DIR=/opt/maximo-mcp
-MCP_LOGS_DIR=/opt/maximo-mcp/logs
-MCP_TRANSPORT=stdio
-```
-
-Then start with no extra arguments:
-
-```bash
-maximo-mcp-server
-```
+[Documentation](https://soumyaprasadrana.github.io/maximo-mcp-server) -
+[Quick start](#quick-start) -
+[What agents can do](#what-agents-can-do) -
+[Configuration](#configuration) -
+[Changelog](CHANGELOG.md)
 
 ---
 
-## Persistent storage (required)
+## What it looks like
 
-Linux / macOS:
+> **User:** Which work orders at BEDFORD are waiting for approval, and approve the ones for pump 11430.
+>
+> The agent, through this server:
+> 1. `maximo_aggregate` -- 1,284 work orders in WAPPR; 37 at BEDFORD.
+> 2. `os_query_builder` + `ws_load` -- loads the 3 for asset 11430.
+> 3. `maximo_plan_status_change` -- WAPPR -> APPR is a valid next status; nothing changed yet.
+> 4. Shows you the plan. **You:** "yes".
+> 5. `maximo_change_status` -- done, with your memo, under Maximo's own rules and signatures.
 
-```bash
-mkdir -p /opt/maximo-mcp/data /opt/maximo-mcp/logs
-```
-
-Windows PowerShell:
-
-```powershell
-New-Item -ItemType Directory -Force -Path C:\maximo-mcp, C:\maximo-mcp\data, C:\maximo-mcp\logs
-```
-
-| Directory                 | Env var             | Contents                                   |
-| ------------------------- | ------------------- | ------------------------------------------ |
-| `<data-dir>/data/meta.db` | `MCP_DATA_BASE_DIR` | SQLite metadata and OAuth client database  |
-| `<logs-dir>/`             | `MCP_LOGS_DIR`      | Rolling log files (`mcp.YYYY-MM-DD.N.log`) |
+Every write goes through the same pattern: **look up -> stage -> preview -> confirm -> commit**.
 
 ---
 
-## Claude Desktop (stdio)
+## Quick start
 
-Add to `claude_desktop_config.json`:
+**1. Prerequisites.** Node.js 20+, network access to Maximo, and a Maximo API key.
 
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**2. Deploy one automation script in Maximo** (once). The server reads Maximo's metadata through it.
+
+- Name: `MAXMCPMETADATA` -- source:
+  `https://raw.githubusercontent.com/soumyaprasadrana/maximo-mcp-server/refs/heads/main/MAXMCPMETADATA.py`
+- Maximo: System Configuration -> Platform Configuration -> Automation Scripts -> create a script
+  with that name, paste the source, activate it.
+
+**3. Add it to your MCP client.** Claude Desktop (`claude_desktop_config.json`), Cursor and Claude
+Code use the same shape:
 
 ```json
 {
@@ -211,682 +60,229 @@ Add to `claude_desktop_config.json`:
       "env": {
         "MAXIMO_URL": "https://your-maximo-host/maximo",
         "MAXIMO_API_KEY": "your-api-key",
-        "MCP_DATA_BASE_DIR": "C:\\maximo-mcp",
-        "MCP_LOGS_DIR": "C:\\maximo-mcp\\logs"
+        "MCP_DATA_BASE_DIR": "/opt/maximo-mcp",
+        "MCP_LOGS_DIR": "/opt/maximo-mcp/logs",
+        "MCP_RECONCILE_LAZY": "true"
       }
     }
   }
 }
 ```
 
-Restart Claude Desktop after saving.
+`MCP_RECONCILE_LAZY` makes the server ready in seconds and fetches each object structure's
+metadata the first time it is needed. Restart the client after installing or upgrading -- clients
+cache the tool list.
 
 ---
 
-## IBM watsonx Orchestrate
+## Pick your setup
 
-Set `MCP_STRICT_TOOL_SCHEMA=true` when registering the server with IBM watsonx Orchestrate.
-This switches all tool inputs to strict (no-nullable, no-union) JSON Schemas, which Orchestrate's
-tool import requires.
+| You want | Add |
+|---|---|
+| One user in Claude / Cursor / Claude Code | nothing more |
+| Q&A and reporting with no way to change data | `--readonly` |
+| A shared server for many users over the network | `--transport http --port 8001` + [OAuth](#http-and-oauth) |
+| Each user to act as themselves in Maximo | `--transport http --caller-apikey` |
+| Staged changes that survive a server restart | `--ws-persist` |
+| watsonx Orchestrate or Copilot Studio (strict schema importers) | `--strict-tool-schema` |
+| A coding agent configuring Maximo (dev environments) | `--copilot-mode` |
+| Everything above, minus specific tools | `--disabled-tools "maximo_import_file*,ws_commit*"` |
 
-```json
-{
-  "mcpServers": {
-    "maximo": {
-      "command": "maximo-mcp-server",
-      "env": {
-        "MAXIMO_URL": "https://your-maximo-host/maximo",
-        "MAXIMO_API_KEY": "your-api-key",
-        "MCP_DATA_BASE_DIR": "C:\\maximo-mcp",
-        "MCP_LOGS_DIR": "C:\\maximo-mcp\\logs",
-        "MCP_STRICT_TOOL_SCHEMA": "true"
-      }
-    }
-  }
-}
-```
-
-For HTTP transport with Orchestrate, also configure OAuth (see below).
+Every flag also has an environment variable -- see [Configuration](#configuration) or
+`maximo-mcp-server --help`.
 
 ---
 
-## OAuth 2.0 setup (HTTP transport only)
+## What agents can do
 
-When `MCP_TRANSPORT=http`, the server enforces OAuth 2.0 Bearer token authentication on every
-MCP connection. Clients use the `client_credentials` grant to obtain a JWT and send it as
-`Authorization: Bearer <token>`.
+**Find and read** -- *read-only, also on `--readonly`*
+- Search object structures, fields and relationships (`maximo_get_metadata`).
+- Build validated queries with filters, child rows, timelines, saved queries and KPIs
+  (`os_query_builder`), load and page through records (`ws_load`, `ws_next_page`).
+- Count, sum and average per group, computed by Maximo (`maximo_aggregate`).
+- Get the valid values for any field -- assets, locations, work types, crews, statuses
+  (`maximo_lookup_values`).
+- Run BIRT reports and get the PDF (`maximo_list_reports`, `maximo_run_report`).
+- Read attachments, any Maximo URL (same host, GET only), integration errors and -- opt-in -- the
+  Maximo server log.
 
-### Step 1: create an OAuth client
+**Change data, safely**
+- Create, update and delete records in a **working set**: every change is staged and previewed
+  with validation warnings before `ws_commit` writes it.
+- Add or remove child rows, attach files (`ws_add_attachment`).
+- Change statuses with a plan-then-confirm step, checked against Maximo's valid next statuses and
+  electronic signatures (`maximo_plan_status_change`, `maximo_change_status`).
+- Route workflow assignments and start processes (`maximo_complete_workflow_assignment`,
+  `maximo_start_workflow`).
+- Invoke any allowed action, import CSV/XML files with a preview, run automation scripts.
+
+**Configure Maximo** -- *with `--copilot-mode`, for development environments*
+- Configure Database (status, apply, discard), Admin Mode, system properties, read-only SQL,
+  live cache reload, App Designer presentation edits -- each with Maximo's own permission checks.
+
+Full tool reference: [docs / tools](https://soumyaprasadrana.github.io/maximo-mcp-server/tools/).
+
+---
+
+## Safe by design
+
+- **Data changes are previewed first.** Working-set commits, status changes, workflow
+  routing, attachments and imports all show what will happen and wait for a confirm. The generic
+  `maximo_invoke_action` and automation-script tools run at once -- hide them with
+  `--disabled-tools` or use `--readonly` if your agents should not have them.
+- **Maximo stays the authority.** Allowed actions, valid next statuses, security groups,
+  electronic signatures and `BMXAA` errors come from Maximo, verbatim.
+- **Your key goes nowhere else.** Every request is pinned to `MAXIMO_URL`; the key travels only in
+  a header and never follows a redirect to another host.
+- **You choose the surface.** `--readonly` for read paths only, configuration tools only with
+  `--copilot-mode`, any tool hidden with `--disabled-tools`.
+- **Per-user identity** over HTTP (`--caller-apikey`): each request runs as the user whose API key
+  it carries; working sets are private to their creator.
+- **Restart-safe** with `--ws-persist`: staged changes survive, and a commit interrupted by a crash
+  is never re-sent automatically.
+
+---
+
+## HTTP and OAuth
+
+With `--transport http` every MCP request needs an OAuth 2.0 bearer token (client credentials).
 
 ```bash
-maximo-mcp-server \
-  --setup-oauth \
-  --data-dir /opt/maximo-mcp \
-  --maximo-url "https://your-maximo-host/maximo" \
-  --maximo-api-key "your-api-key"
+# 1. create a client (the secret is shown once)
+maximo-mcp-server --setup-oauth --data-dir /opt/maximo-mcp --maximo-url https://your-maximo/maximo --maximo-api-key KEY
+
+# 2. get a token at runtime
+curl -X POST http://localhost:8001/oauth/token -d "grant_type=client_credentials" -d "client_id=ID" -d "client_secret=SECRET"
 ```
 
-This prints `client_id` and `client_secret` to stdout. Save the secret; it is shown only once.
-If `MCP_OAUTH_CREDS_DIR` is set, the credentials are also written to `oauth-credentials.json` in
-that directory.
-
-### Step 2: obtain a token at runtime
-
-```bash
-curl -X POST http://localhost:8001/oauth/token \
-  -d "grant_type=client_credentials" \
-  -d "client_id=<your-client-id>" \
-  -d "client_secret=<your-client-secret>"
-```
-
-Response:
-
-```json
-{
-  "access_token": "eyJ...",
-  "token_type": "bearer",
-  "expires_in": 3600
-}
-```
-
-### Step 3: connect the MCP client
-
-Send the token as `Authorization: Bearer <access_token>` on every MCP HTTP request.
-
-### Managing clients
-
-```bash
-# List registered clients (secrets not shown)
-maximo-mcp-server --list-oauth-clients --data-dir /opt/maximo-mcp \
-  --maximo-url "..." --maximo-api-key "..."
-
-# Remove a client
-maximo-mcp-server --delete-oauth-client <client-id> --data-dir /opt/maximo-mcp \
-  --maximo-url "..." --maximo-api-key "..."
-```
-
-### OAuth environment variables
-
-| Variable                  | Default | Description                                     |
-| ------------------------- | ------- | ----------------------------------------------- |
-| `MCP_OAUTH_TOKEN_TTL`     | `3600`  | JWT expiry in seconds                           |
-| `MCP_OAUTH_CREDS_DIR`     | (none)  | Directory where the credentials file is written |
-| `MCP_SETUP_OAUTH`         | (none)  | Set to `1` to run setup-oauth mode and exit     |
-| `MCP_LIST_OAUTH_CLIENTS`  | (none)  | Set to `1` to list clients and exit             |
-| `MCP_DELETE_OAUTH_CLIENT` | (none)  | Set to `<clientId>` to delete a client and exit |
+Send `Authorization: Bearer <token>` on every request. `--list-oauth-clients` and
+`--delete-oauth-client <id>` manage clients; secrets are stored hashed. Step-by-step setup for
+Claude Desktop, watsonx Orchestrate and other HTTP clients:
+[docs / connecting clients](https://soumyaprasadrana.github.io/maximo-mcp-server/guide/clients).
 
 ---
 
-## Metadata sync
+## Configuration
 
-On first startup the server downloads all Maximo Object Structure metadata. This can take
-several minutes on large Maximo environments. Sync is resumable: if the server restarts
-mid-sync, the next startup resumes from the last completed stage.
+Required: `MAXIMO_URL`, `MAXIMO_API_KEY`, `MCP_DATA_BASE_DIR`, `MCP_LOGS_DIR` (or `--maximo-url`,
+`--maximo-api-key`, `--data-dir`, `--logs-dir`).
 
-Sync stages:
+<details>
+<summary><b>Transport and identity</b></summary>
 
-| Stage | Name                  | What it fetches                                                |
-| ----- | --------------------- | -------------------------------------------------------------- |
-| 1     | Fetching API metadata | List of all Object Structures from `/api/apimeta`              |
-| 2     | Loading schemas       | JSON schema for each Object Structure (one request per OS)     |
-| 3     | Loading MBO metadata  | Object/attribute/relationship data via `MAXMCPMETADATA` script |
+| Variable | CLI flag | Default | Description |
+|---|---|---|---|
+| `MCP_TRANSPORT` | `--transport` | `stdio` | `stdio` or `http` |
+| `MCP_SERVER_PORT` | `--port` | `8001` | HTTP port |
+| `MCP_SERVER_HOST` | `--host` | all interfaces | HTTP bind address, e.g. `127.0.0.1` |
+| `MCP_CALLER_APIKEY` | `--caller-apikey` | `false` | Run each HTTP request as the user whose key is in `x-maximo-apikey` |
+| `MCP_STRICT_TOOL_SCHEMA` | `--strict-tool-schema` | `false` | Strict tool schemas (watsonx Orchestrate, Copilot Studio) |
+| `MCP_OAUTH_TOKEN_TTL` | `--oauth-token-ttl` | `3600` | Token lifetime in seconds |
+| `MAXIMO_ESIG_AUTH` | -- | -- | base64 of the service account's password: status changes are signed for callers, who only give a reason |
 
-While sync is running, tool calls return a `metadata_sync_in_progress` response with the current
-stage and percentage. Enable `--dev-mode` and use `mcp_server_status` / `mcp_read_logs` to
-monitor sync from within the agent.
+</details>
 
-### Sync startup modes
+<details>
+<summary><b>Which tools are exposed</b></summary>
 
-| Mode                      | Flag               | Behavior                                                                                  |
-| ------------------------- | ------------------ | ----------------------------------------------------------------------------------------- |
-| Fire-and-forget (default) | (none)             | Server starts immediately; sync runs in-process in the background.                        |
-| Synchronous               | `--reconcile-sync` | Server blocks until sync completes before accepting connections.                          |
-| Background worker         | `--bg-sync-worker` | Sync runs as a detached child process; a file lock prevents duplicate workers on restart. |
+| Variable | CLI flag | Default | Description |
+|---|---|---|---|
+| `MCP_READONLY` | `--readonly` | `false` | Read tools only (plus diagnostics) |
+| `MCP_ENABLE_SCRIPT_GET` | `--enable-script-get` | `false` | With `--readonly`, a GET-only automation-script tool |
+| `MCP_COPILOT_MODE` | `--copilot-mode` | `false` | Configuration tools and Migration Manager object structures |
+| `MCP_DISABLED_TOOLS` | `--disabled-tools` | -- | Tools never to register; trailing `*` = prefix; unmatched entries are reported |
+| `MCP_ENABLE_SERVER_LOGS` | `--enable-server-logs` | `false` | `maximo_read_server_log` (Maximo's log holds other users' data) |
+| `MCP_ENABLE_DEV_MODE` | `--dev-mode` | `false` | `mcp_read_logs` (`mcp_server_status` is always there) |
 
-Background worker example (Claude Desktop):
+</details>
 
-```json
-{
-  "mcpServers": {
-    "maximo": {
-      "command": "maximo-mcp-server",
-      "env": {
-        "MAXIMO_URL": "https://your-maximo-host/maximo",
-        "MAXIMO_API_KEY": "your-api-key",
-        "MCP_DATA_BASE_DIR": "C:\\maximo-mcp",
-        "MCP_LOGS_DIR": "C:\\maximo-mcp\\logs",
-        "MCP_BG_SYNC_WORKER": "true"
-      }
-    }
-  }
-}
-```
+<details>
+<summary><b>Metadata</b></summary>
 
----
+| Variable | CLI flag | Default | Description |
+|---|---|---|---|
+| `MCP_RECONCILE_LAZY` | `--reconcile-lazy` | `false` | On-demand metadata: ready in seconds, no startup sync (recommended) |
+| `MCP_RECONCILE_LAZY_TTL` | `--reconcile-lazy-ttl` | `86400` | Seconds before cached metadata is refetched |
+| `MCP_RECONCILE_ON_STARTUP` | `--reconcile-on-startup` | `true` | Full sync at startup (when not lazy) |
+| `MCP_RECONCILE_ON_RESTART` | `--force-reconcile` | `false` | Force a full re-sync |
+| `MCP_BG_SYNC_WORKER` | `--bg-sync-worker` | `false` | Run the full sync in a background process |
+| `MCP_RECONCILE_WEEKLY_ENABLED` | `--reconcile-weekly` | `false` | Weekly refresh (`MCP_RECONCILE_WEEKLY_CRON`) |
+| `MCP_EMBEDDINGS_MODE` | `--embeddings-mode` | `none` | `local` adds semantic search; needs `@xenova/transformers` installed separately |
 
-## Configuration reference
+</details>
 
-### Required
+<details>
+<summary><b>Working sets and audit</b></summary>
 
-| Variable            | CLI flag           | Description                                      |
-| ------------------- | ------------------ | ------------------------------------------------ |
-| `MAXIMO_URL`        | `--maximo-url`     | Base URL of the Maximo instance                  |
-| `MAXIMO_API_KEY`    | `--maximo-api-key` | API key used for all Maximo calls                |
-| `MCP_DATA_BASE_DIR` | `--data-dir`       | Persistent base directory (holds `data/meta.db`) |
-| `MCP_LOGS_DIR`      | `--logs-dir`       | Persistent log directory                         |
+| Variable | CLI flag | Default | Description |
+|---|---|---|---|
+| `MCP_WS_PERSIST` | `--ws-persist` | `false` | Keep working sets in `<data-dir>/data/workingsets.db` across restarts |
+| `MCP_WS_TTL_MINUTES` | `--ws-ttl-minutes` | `15` | Idle minutes before a working set expires |
+| `MCP_WS_PERSIST_MAX_MB` | `--ws-persist-max-mb` | `64` | Largest working set persisted |
+| `MCP_WS_SWEEP_SECONDS` | `--ws-sweep-seconds` | `60` | Cleanup interval (5..3600) |
+| `AUDIT_ENABLED` | `--audit-enabled` | `false` | Audit every staged change and commit |
 
-### Transport
+</details>
 
-| Variable                 | CLI flag               | Default | Description                                           |
-| ------------------------ | ---------------------- | ------- | ----------------------------------------------------- |
-| `MCP_TRANSPORT`          | `--transport`          | `stdio` | `stdio` or `http`                                     |
-| `MCP_SERVER_PORT`        | `--port`               | `8001`  | HTTP port when transport is `http`                    |
-| `MCP_STRICT_TOOL_SCHEMA` | `--strict-tool-schema` | `false` | Strict (no-nullable) schemas, for watsonx Orchestrate |
+<details>
+<summary><b>Limits and logging</b></summary>
 
-### Logging
+| Variable | CLI flag | Default | Description |
+|---|---|---|---|
+| `MCP_MAX_PAGE_SIZE` | `--max-page-size` | `1000` | Largest page; larger requests are clamped with a warning |
+| `MCP_MAX_ATTACHMENT_MB` | `--max-attachment-mb` | `25` | Largest attachment up/downloaded |
+| `MCP_MAX_REPORT_MB` | `--max-report-mb` | `10` | Largest report returned |
+| `MCP_MAX_CONCURRENT_TOOL_CALLS` | `--max-concurrent-tool-calls` | `0` | Parallel calls before `server_busy` (0 = unlimited) |
+| `MCP_SERVER_LOG_SCAN_MB` | `--server-log-scan-mb` | `64` | Most of Maximo's log scanned per call |
+| `MCP_LOG_MAX_MB` / `MCP_LOG_MAX_FILES` | `--log-max-mb` / `--log-max-files` | `20` / `30` | Log rotation |
+| `MCP_SERVER_DEBUG` | `--debug` | `false` | Debug logs |
 
-| Variable               | CLI flag             | Default | Description             |
-| ---------------------- | -------------------- | ------- | ----------------------- |
-| `MCP_LOG_ROTATE_DAILY` | `--log-rotate-daily` | `true`  | Rotate logs by date     |
-| `MCP_LOG_MAX_MB`       | `--log-max-mb`       | `20`    | Max MB per log file     |
-| `MCP_LOG_MAX_FILES`    | `--log-max-files`    | `30`    | Retained log files      |
-| `MCP_LOG_TO_CONSOLE`   | `--log-to-console`   | `false` | Echo logs to console    |
-| `MCP_SERVER_DEBUG`     | `--debug`            | `false` | Enable debug-level logs |
+</details>
 
-### Metadata sync
-
-| Variable                       | CLI flag                  | Default     | Description                                 |
-| ------------------------------ | ------------------------- | ----------- | ------------------------------------------- |
-| `MCP_RECONCILE_ON_STARTUP`     | `--reconcile-on-startup`  | `true`      | Sync on startup                             |
-| `MCP_RECONCILE_ON_RESTART`     | `--force-reconcile`       | `false`     | Force a full re-sync on every restart       |
-| `MCP_RECONCILE_WEEKLY_ENABLED` | `--reconcile-weekly`      | `false`     | Weekly background re-sync                   |
-| `MCP_RECONCILE_WEEKLY_CRON`    | `--reconcile-weekly-cron` | `0 3 * * 0` | Cron expression for weekly sync             |
-| `MCP_RECONCILE_SYNC`           | `--reconcile-sync`        | `false`     | Block server startup until sync completes   |
-| `MCP_BG_SYNC_WORKER`           | `--bg-sync-worker`        | `false`     | Spawn sync as a detached background process |
-
-### Embeddings
-
-| Variable              | CLI flag            | Default | Description                  |
-| --------------------- | ------------------- | ------- | ---------------------------- |
-| `MCP_EMBEDDINGS_MODE` | `--embeddings-mode` | `none`  | `none`, `local`, or `openai` |
-
-`none` is recommended for production. Local embeddings require native dependencies that may not
-build on every platform.
-
-### Audit
-
-| Variable                 | CLI flag            | Default   | Description                      |
-| ------------------------ | ------------------- | --------- | -------------------------------- |
-| `AUDIT_ENABLED`          | `--audit-enabled`   | `false`   | Enable Working Set audit logging |
-| `AUDIT_DB_DIR`           | `--audit-dir`       | `./audit` | Monthly audit SQLite files       |
-| `AUDIT_RETENTION_MONTHS` | `--audit-retention` | `12`      | Audit retention in months        |
-
-### Diagnostics
-
-| Variable              | CLI flag     | Default | Description             |
-| --------------------- | ------------ | ------- | ----------------------- |
-| `MCP_ENABLE_DEV_MODE` | `--dev-mode` | `false` | Enable diagnostic tools |
-
-When `MCP_ENABLE_DEV_MODE=true`, two additional MCP tools are registered:
-
-- `mcp_server_status`: a full diagnostic snapshot (sync stage/progress, database counts,
-  checkpoint state, log file list)
-- `mcp_read_logs`: tail recent log entries, with an optional level filter
-
-These tools bypass the metadata sync guard, so they work even during an active sync.
-`--readonly` registers them as well, without requiring `--dev-mode`.
-
-### Read-only mode
-
-| Variable                | CLI flag              | Default | Description                                                                           |
-| ----------------------- | --------------------- | ------- | ------------------------------------------------------------------------------------- |
-| `MCP_READONLY`          | `--readonly`          | `false` | Register only the Maximo read path plus diagnostic tools                              |
-| `MCP_ENABLE_SCRIPT_GET` | `--enable-script-get` | `false` | With `--readonly`, also register `maximo_invoke_automation_script` in a GET-only form |
-
-When enabled, write tools are not registered. The live surface is `maximo_get_metadata`,
-`os_query_builder` (`opAction=query` only), `ws_load`, `ws_next_page`, `ws_previous_page`,
-`ws_get_records`, `ws_get_allowed_actions`, `ws_list_attachments`, `ws_get_attachment`,
-`maximo_get_allowed_actions`, `maximo_get_url`, plus `mcp_server_status` and `mcp_read_logs`.
-Working-set writes, context tools, audit, status/workflow (write side), file import,
-`maximo_invoke_action`, `maximo_invoke_automation_script` and premium configuration tools are
-omitted.
-
-`MCP_ENABLE_SCRIPT_GET` is an explicit opt-in for deployments that need to call automation scripts
-from a read-only server. It registers `maximo_invoke_automation_script` with GET only (no
-`httpMethod`, no request body). It is off by default because Maximo does not stop a script from
-changing data on a GET: enable it only if the scripts the API user can reach are safe to run from a
-read-only deployment. It has no effect without `--readonly`.
-
-### Maximo Developer Copilot mode
-
-| Variable           | CLI flag         | Default | Description                                             |
-| ------------------ | ---------------- | ------- | ------------------------------------------------------- |
-| `MCP_COPILOT_MODE` | `--copilot-mode` | `false` | Enables Maximo Developer Copilot discovery capabilities |
-
-When enabled, the server exposes Migration Manager Object Structures for discovery and Working
-Set edits. This mode targets coding agents that develop, configure, and validate Maximo as a
-platform, using the server's existing metadata discovery, staging, preview, and commit lifecycle.
-
-Migration Manager Object Structures must be enabled for OSLC discovery: ensure the Maximo system
-property `mxe.oslc.validusewith` includes `MIGRATIONMGR`.
-
-```text
-INTEGRATION,OSLC,REPORTING,MIGRATIONMGR
-```
-
-This is an experimental feature intended for development environments. Review every Working Set
-preview and validation warning before committing configuration changes.
+More options (logging, OAuth bootstrap, async commit, metadata API key):
+[docs / configuration](https://soumyaprasadrana.github.io/maximo-mcp-server/guide/configuration).
 
 ---
 
-## Tool reference
+## Troubleshooting
 
-### Metadata and discovery
+| You see | Do this |
+|---|---|
+| `metadata_sync_in_progress` on every call | The first full sync is running (`mcp_server_status` shows progress), or `MAXMCPMETADATA` is missing. Or start with `--reconcile-lazy`. |
+| New tools are missing | Restart the MCP client (it caches the tool list); configuration tools need `--copilot-mode`. |
+| `AUTH_REDIRECT` | On MAS, API keys work on `/api/...` paths; `/oslc/...` redirects to the login page. Keep the default paths and check the key. |
+| `BMXAA...` in an error | That is Maximo's own reason, passed through unchanged -- fix the input it names. |
+| `esig_required` | Pass `esigAuth` (base64 of the password only) and `esigReason`, or set `MAXIMO_ESIG_AUTH` on the server. |
+| `invalid_target_status` / BLOCKED plan | Use one of the `valid_next_statuses` it returns. |
+| `input_node_reached` | The workflow needs a choice only the Maximo UI can make: finish it in the Inbox. |
+| HTTP 401 from the server | Get an OAuth token (see [HTTP and OAuth](#http-and-oauth)). |
 
-#### `maximo_get_metadata`
-
-Resolves `maximo://` URIs for Object Structure discovery and schema lookup.
-
-| URI pattern                                      | Returns                                                           |
-| ------------------------------------------------ | ----------------------------------------------------------------- |
-| `maximo://os/search/{query}`                     | Object Structures matching a keyword                              |
-| `maximo://os/{osName}/schema`                    | API-scoped schema for parent object fields                        |
-| `maximo://os/{osName}/relatedObjects`            | Children this OS exposes: `objectName`, `relation`, `cardinality` |
-| `maximo://os/{osName}/subschemas/{childObject}`  | Child object schema                                               |
-| `maximo://object/{object}/relationships/compact` | Every relationship: name, target object, join `whereClause`       |
-
-Start here before building queries. Prefer the `maximo://os/...` URIs, which are scoped by
-object-structure security. `relationships/compact` is useful mainly to name a relationship that
-`relatedObjects` does not list.
-
-#### `os_query_builder`
-
-Builds a validated OSLC query URL and creates the Working Set session (`wsId`). This is the
-standard Working Set creation path.
-
-Supports `where` conditions, `select`, `orderBy`, `pageSize`, `childOptions`, `childCollection`,
-and `savedQuery`, plus these additional parent-level options:
-
-- **Timeline filters** (`tlrange` / `tlattribute`): a date-math range around an index date, for
-  example `tlrange="-3M"`, `tlattribute="reportdate"` for "reported in the last 3 months".
-  `tlrange` follows `<sign><n><unit>`, where sign is `+`, `-`, or `+-`, and unit is one of
-  `D` (days), `W` (weeks), `M` (months), `Y` (years), `h` (hours), `m` (minutes), or
-  `s` (seconds). The two fields are required together.
-- **Synonym-domain internal filters** (`domaininternalwhere`): filters on the internal value of
-  an attribute bound to a synonym domain (for example WOSTATUS) rather than its external display
-  value. Format is `<attrName>=val1,val2,...` for an IN match, or `<attrName>!=val1,val2,...`
-  for a NOT IN match. It is independent of `where` and is combined with it using AND.
-- **Inline schema** (`addschema`): inlines the JSON schema for this exact query's `select`
-  (attributes, child blocks, `rel.<name>{...}` nesting) into the response alongside the data, in
-  the same call. Surfaced by `ws_load` as `meta.schema`, passed through as Maximo returns it since
-  its shape depends on how deep `select` goes. Maximo does not carry this flag onto its own
-  next-page `href`, so paging past the first page needs `addschema:true` set again on that page's
-  own `os_query_builder` call.
-- **Page-number paging** (`pageno`): jumps directly to page N (1-based) of a `pageSize`'d
-  result. Maximo's own `nextPage.href` is this same query with `pageno=<n>` appended, so it is a
-  real, safe input. Prefer `ws_next_page` / `ws_previous_page` on an already-loaded working set
-  over re-deriving `pageno` yourself -- see [Working Set tools](#working-set-tools) below.
-
-Related data is available three ways, and each wants a different name; the wrong one returns
-empty rows rather than an error:
-
-| Goal                                        | Use                           | Name it wants                 |
-| ------------------------------------------- | ----------------------------- | ----------------------------- |
-| Expand a child the OS exposes               | child block in `select`       | child object name, lowercased |
-| Reach a relationship the OS does not expose | `rel.<name>{...}` in `select` | relationship name             |
-| Filter, sort, or page child rows            | `childCollection`             | either, and they can differ   |
-
-Filtering child rows requires `childCollection`; `childOptions` and dot notation cannot page or
-count them (dot notation filters parents by child values, it does not trim child rows).
-Aggregation is not available; `_dbcount` and similar are accepted and silently dropped, so
-`collectioncount` is the only supported count.
+More: [docs / troubleshooting and guides](https://soumyaprasadrana.github.io/maximo-mcp-server/guide/getting-started).
 
 ---
 
-### Working Set tools
-
-A Working Set is a stateful, in-memory session tied to query context. All mutations are staged
-and must be explicitly committed.
-
-#### Read and load
-
-| Tool                     | What it does                                                                          |
-| ------------------------ | ------------------------------------------------------------------------------------- |
-| `ws_load`                | Loads records from Maximo into the working set                                        |
-| `ws_next_page`           | Loads the next page into the same working set, following Maximo's own `nextPage` link |
-| `ws_previous_page`       | Loads the previous page, following Maximo's own `previousPage` link                   |
-| `ws_get_records`         | Returns loaded records from working set memory                                        |
-| `ws_get_allowed_actions` | Allowed actions for every record the working set's query matches, in one call         |
-| `ws_get_active`          | Returns the current active record                                                     |
-
-Both `ws_load` and `ws_get_records` support `useLean=true` for a large reduction in token usage
-on large result sets.
-
-When the query sets `collectioncount: true`, `ws_load` returns `meta.totalCount` (total records
-matching in Maximo), `meta.count` (rows in this page), and `meta.hasMore`. Totals survive lean
-encoding, so answer "how many" from `totalCount`, never from the page length.
-
-Whenever Maximo returns paging links, `ws_load` also returns `meta.paging`
-(`pagenum`/`totalPages`/`nextPage`/`previousPage`). `ws_next_page` and `ws_previous_page` follow
-those links directly, replacing the working set's loaded records with that page's -- the same
-records area `ws_load` populates, so `ws_get_records` / `ws_set_active` keep working unchanged
-on whichever page is current. Both refuse to move if Maximo didn't return that link, and refuse
-if the working set has staged edits on the current page (`ws_commit` or `ws_discard` first,
-since replacing the records would silently discard them).
-
-When the query sets `addschema: true`, `ws_load` also returns `meta.schema` -- the JSON schema
-Maximo inlined for this exact `select`, passed through as-is.
-
-#### Stage changes
-
-| Tool                 | What it does                                                             |
-| -------------------- | ------------------------------------------------------------------------ |
-| `ws_update_field`    | Stages one field update on one record                                    |
-| `ws_multi_update`    | Stages multiple field updates across records                             |
-| `ws_batch_update`    | Stages updates based on a filter/diff spec                               |
-| `ws_set_active`      | Sets the active record; accepts index, `_tempId`, `restId`, or href      |
-| `ws_init_new_record` | Creates a schema-based draft for a new record (create flow)              |
-| `ws_update_draft`    | Merges user-supplied fields into a draft created by `ws_init_new_record` |
-| `ws_delete_record`   | Stages a delete operation                                                |
-
-#### Review and finalize
-
-| Tool                 | What it does                                                                             |
-| -------------------- | ---------------------------------------------------------------------------------------- |
-| `ws_preview_changes` | Returns the staged diff plus non-blocking `validation_warnings` for review before commit |
-| `ws_commit`          | Plans and applies staged changes to Maximo (validation warnings do not block commit)     |
-| `ws_discard`         | Drops staged changes, keeps loaded state                                                 |
-| `ws_remove`          | Removes the working set from memory (session cleanup)                                    |
-
-`ws_preview_changes` runs a full validation pass (domain values, read-only flags, type checks)
-and returns the results in `validation_warnings`; present these to the user before deciding
-whether to adjust or proceed. `ws_commit` does not re-run validation; it goes directly to plan
-and execute, letting Maximo act as the final authority.
-
-#### Attachments
-
-| Tool                  | What it does                               |
-| --------------------- | ------------------------------------------ |
-| `ws_list_attachments` | Lists record doclinks                      |
-| `ws_get_attachment`   | Retrieves attachment content by ID or href |
-
-#### Audit
-
-| Tool                    | What it does                                                     |
-| ----------------------- | ---------------------------------------------------------------- |
-| `maximo_get_audit_logs` | Fetches Working Set audit events (requires `AUDIT_ENABLED=true`) |
-
----
-
-### Business process tools
-
-#### Status change
-
-Status changes are executed through a wsmethod action, not as field updates. The action's name
-is not fixed across object structures -- MXAPIWO exposes `changeWOStatus`, not a generic
-`changeStatus` -- so it is auto-detected from the record's own `allowedactions` (the wsmethod
-described "Change Status") rather than assumed. Use the two-tool pattern below to enforce user
-review before execution.
-
-**`maximo_plan_status_change`** validates a proposed status transition and returns a preview
-without making any changes. It fetches the current status, auto-detects the status-change action
-and checks it is currently permitted, and returns the current status, target status, detected
-action name, transition verdict, and the full allowed-actions list. Always call this first, and
-show the result to the user before proceeding. Pass `actionName` to override the auto-detection
-if it picks the wrong one (or none) for your object structure.
-
-**`maximo_change_status`** executes the status transition after user confirmation. It re-checks
-allowed actions immediately before execution to guard against race conditions, and rejects the
-request if the detected (or given) action is not in the allowed actions.
-
-Example flow:
-
-```
-1. os_query_builder -- find the work order, get wsId + restId
-2. maximo_plan_status_change osName=MXAPIWO restId=12345 newStatus=CLOSE memo="Job complete"
-3. -- show the plan to the user, get confirmation
-4. maximo_change_status osName=MXAPIWO restId=12345 newStatus=CLOSE memo="Job complete"
-```
-
-#### File import
-
-**`maximo_import_file`** uploads a CSV (FLAT, header row first) or XML document through an
-object structure using Maximo's REST file import. `preview` defaults to true: Maximo validates
-the document and returns total, valid and invalid record counts plus per-record warnings without
-writing anything. Show that to the user, then call again with `preview:false` to import. Use
-`async:true` (with an optional `name`) for large loads. The object structure must have "Support
-Flat Structure" enabled for CSV. Not available under `--readonly`.
-
-**`maximo_import_file_status`** polls an async import using the `statusUrl` returned by
-`maximo_import_file`.
-
-#### Workflow
-
-**`maximo_get_workflow_assignments`** queries the `MXAPIWFASSIGNMENT` object structure to list
-pending workflow tasks. Filters: `personId`, `roleId`, `processName`, `ownerTable`, `pageSize`.
-Use `includeAllowedActions=true` to fetch the allowed actions on each owning record in one call.
-
-**`maximo_send_workflow_response`** invokes a workflow action on the owning record (work order,
-service request, and so on). It calls `getAllowedActions` before execution and rejects the
-request if the action is not available. Omit `actionName` to get a discovery response listing
-only the allowed actions.
-
-Common action names (these vary by workflow configuration):
-
-| Action     | Typical meaning         |
-| ---------- | ----------------------- |
-| `wfappr`   | Approve                 |
-| `wfcanreq` | Cancel request / reject |
-| `wfreject` | Reject                  |
-| `wfaccept` | Accept task             |
-| `wfreturn` | Return for rework       |
-
-Example flow:
-
-```
-1. maximo_get_workflow_assignments personId=JSMITH includeAllowedActions=true
-2. -- returns ownerid=5678, ownertable=WORKORDER, _allowedActions=[wfappr, wfcanreq]
-3. maximo_send_workflow_response osName=MXAPIWO restId=5678 actionName=wfappr params={memo:"Approved"}
-```
-
-#### Generic action tools
-
-`maximo_change_status` and `maximo_send_workflow_response` are themselves narrow wrappers over
-"check allowedactions, then invoke" -- one for status transitions, one for workflow responses.
-These tools expose that same mechanism directly, for any other action Maximo allows on a record.
-
-**`maximo_get_allowed_actions`** (read-only) lists every action currently allowed on one record
--- wsmethod actions (custom/automation-script-backed, e.g. `changeWOStatus`, `startTimer`) and
-system actions (core Maximo REST actions, e.g. `discardedit`, `genreport`, `sigopgranted`). For
-each action it returns `httpmethod` (GET actions take parameters as a query string, POST actions
-take a JSON body), a `description` when Maximo provides one, and -- when Maximo documents it --
-the expected request body (`requestSchema`) or query parameters (`requestQueryParams`), so you
-know what to pass before invoking rather than guessing.
-
-**`maximo_invoke_action`** (write) invokes any allowed action by name on one record. It
-re-checks the action is still allowed immediately before invoking, then dispatches with the
-correct HTTP method and action-key prefix per Maximo's own descriptor (`wsmethod:<name>` for
-wsmethod actions, the bare name for system actions).
-
-**`ws_get_allowed_actions`** (read-only, on the working set) returns allowed actions for every
-record a working set's query currently matches, in one call -- it re-runs that exact query (same
-`oslc.where`/`pageSize`/`pageno`) with `oslc.select` overridden to `allowedactions`, instead of
-one `maximo_get_allowed_actions` call per record. Does not require the working set to be loaded,
-and does not change its loaded records.
-
-Example flow:
-
-```
-1. maximo_get_allowed_actions osName=MXAPIWO restId=12345
-   -- returns e.g. startTimer (POST, no body), islocked (GET, no params)
-2. maximo_invoke_action osName=MXAPIWO restId=12345 actionName=startTimer
-```
-
-#### Automation scripts
-
-**`maximo_invoke_automation_script`** (write) runs an automation script by name through its REST
-endpoint (`/api/script/<name>`) and returns the HTTP status and response body. The script must
-exist and be active; it does not need a launch point. Use `httpMethod: GET` for read/query-style
-scripts, or `POST` with a JSON `body` that the script reads from its `request` implicit variable;
-`params` adds query-string parameters. The script runs immediately with no preview, and a script
-can change data even when invoked with GET, so only invoke scripts you trust. Not available under
-`--readonly` unless the operator sets `MCP_ENABLE_SCRIPT_GET`, which registers a GET-only form.
-
-#### Generic URL read
-
-**`maximo_get_url`** (read-only, included in `--readonly`) performs a GET against any URL on the
-configured Maximo and returns the raw response -- status, content type and body -- for endpoints
-no dedicated tool covers, such as `/oslc/whoami`, `/api/os/mxapiwo/<restId>/woactivity` or
-`/api/error/messages/BMXAA4195E`. `url` is a path on the Maximo (the context root is added for
-you) or a full URL on the same host; `params` adds query parameters and `headers` adds request
-headers. JSON responses are returned parsed; large bodies are truncated at `maxBytes` (default 200000) and binary bodies are omitted (use `ws_get_attachment` for files).
-
-It stays read-only by construction: GET only; same Maximo host only, so the server's credentials
-are never sent elsewhere; redirects are not followed; credential headers (`apikey`, `cookie`,
-`authorization`, `maxauth`) cannot be set; and `action=` query parameters and `/api/script` or
-`/oslc/script` paths are refused, because Maximo can run code or change data on a plain GET --
-use `maximo_invoke_action` or `maximo_invoke_automation_script` for those. Prefer
-`os_query_builder` plus `ws_load` for record queries.
-
----
-
-### Context session store
-
-Six lightweight key-value tools for storing agent state across tool calls within a conversation.
-
-| Tool         | What it does                                        |
-| ------------ | --------------------------------------------------- |
-| `ctx_create` | Creates a new named session store                   |
-| `ctx_get`    | Reads a value by key from a session                 |
-| `ctx_set`    | Writes or overwrites a value by key                 |
-| `ctx_remove` | Removes a single key from a session                 |
-| `ctx_delete` | Deletes an entire session                           |
-| `ctx_list`   | Lists all keys (and optionally values) in a session |
-
-Useful for caching intermediate query results, tracking multi-step workflow state, or storing
-user preferences without round-tripping to Maximo.
-
----
-
-### Diagnostic tools (`--dev-mode`, or automatically with `--readonly`)
-
-**`mcp_server_status`** returns a full diagnostic snapshot: server version, transport, PID,
-uptime, live sync progress, checkpoint state, database record counts, active configuration, and
-the log file list.
-
-**`mcp_read_logs`** tails log entries from the MCP server log files.
-
-| Parameter | Default  | Description                                                |
-| --------- | -------- | ---------------------------------------------------------- |
-| `lines`   | 100      | Number of recent lines to return (0 = all)                 |
-| `level`   | `all`    | Filter: `all`, `info`, `warn`, `error`, `debug`            |
-| `file`    | (latest) | Specific log filename (for example `mcp.2026-04-11.1.log`) |
-
----
-
-## Orchestration patterns
-
-### Pattern A: read-only analysis
-
-```
-1. maximo_get_metadata  maximo://os/search/work+order
-2. maximo_get_metadata  maximo://os/{osName}/schema
-3. os_query_builder     with status/priority/site filters
-4. ws_load              useLean=true
-5. ws_get_records       analyze and report
-6. ws_remove            cleanup
-```
-
-### Pattern B: governed field update
-
-```
-1. os_query_builder
-2. ws_load
-3. ws_update_field / ws_multi_update / ws_batch_update
-4. ws_preview_changes   -- show diff and any validation_warnings to the user
-5. ws_commit            -- persist, after user confirmation
-6. ws_remove
-```
-
-### Pattern C: create a new record
-
-```
-1. ws_init_new_record   osName=MXAPISR
-   -- returns wsId, draftRecord skeleton, metadata
-2. ws_update_draft      wsId, fields={description:"...", reportedby:"...", ...}
-3. ws_preview_changes   -- review the draft and any validation_warnings
-4. ws_commit            -- creates the record in Maximo
-5. ws_remove
-```
-
-### Pattern D: status transition
-
-```
-1. os_query_builder            -- find the record, get restId
-2. maximo_plan_status_change   osName, restId, newStatus
-3. -- show the plan to the user, wait for confirmation
-4. maximo_change_status        osName, restId, newStatus, memo
-```
-
-### Pattern E: workflow approval
-
-```
-1. maximo_get_workflow_assignments  personId={me} includeAllowedActions=true
-2. -- identify the assignment: note ownerid, ownertable, _allowedActions
-3. -- present to the user, e.g. "Work order WO-1234 is waiting for your approval"
-4. maximo_send_workflow_response    osName, restId=ownerid, actionName=wfappr
-```
-
-### Pattern F: diagnose a stalled sync
-
-```
-1. mcp_server_status
-   -- read sync.currentStageName, sync.progress.percentComplete
-   -- read sync.checkpoint (last persisted stage)
-   -- read sync.lastError
-2. mcp_read_logs  level=error  lines=50
-   -- look for network errors, script failures, or auth issues
-```
-
----
-
-## Operational notes
-
-- First metadata sync takes several minutes on large Maximo environments; subsequent startups
-  skip it once the completed flag is persisted.
-- Sync is resumable: if the server stops mid-sync, the next startup resumes from the last
-  completed stage.
-- Always set `MCP_DATA_BASE_DIR` and `MCP_LOGS_DIR` to persistent paths outside the process
-  working directory in orchestrated environments.
-- `MCP_EMBEDDINGS_MODE=none` (default) is recommended for production; local embeddings require
-  native dependencies that may not build on every platform.
-- Lean mode (`useLean=true` on `ws_load` / `ws_get_records`) meaningfully reduces token usage on
-  large result sets.
-- OAuth client secrets are hashed in the SQLite database and cannot be recovered. If a secret is
-  lost, delete the client and create a new one.
-
----
-
-## Premium edition
-
-The same base layer described in this document is also available as a premium edition that adds
-a set of Maximo configuration-management tools: Configure Database, Admin Mode control, system
-property management, read-only SQL, cache reload, Application
-Designer presentation editing, and configuration safety guards. These tools are not included in
-this npm package.
-
-For access to the premium edition, or for evaluation, partnership, or a tailored build, contact
-**soumyaprasad.rana@gmail.com**.
+## Versions and license
+
+| Published on npm | This package | Edition |
+|---|---|---|
+| see the npm badge above | **2.1.0** | one edition -- every tool is in this package |
+
+**What is new in 2.1.0:** every request pinned to `MAXIMO_URL`; workflow routing and start;
+valid-next-status checks; field lookups (incl. table domains); group-by aggregation; BIRT reports;
+integration errors and opt-in Maximo server log; attachment upload; limits and clearer auth
+errors. Details: [CHANGELOG](CHANGELOG.md#210----2026-11-07).
+
+**License.** Every tool ships in this package; there are no paid tiers or hidden editions. The
+source is not open: the software is proprietary and free for non-commercial use (personal,
+educational, research) under the terms in [LICENSE](LICENSE). For commercial use or
+redistribution, contact the author.
 
 ---
 
 ## Support
 
-- GitHub issues: https://github.com/soumyaprasadrana/maximo-mcp-server/issues
-- Changelog: [CHANGELOG.md](CHANGELOG.md)
-- Related project: [maximo-kit](https://github.com/soumyaprasadrana/maximo-kit), a Spec Kit
-  extension that drives this server through a design-first, recipe-driven configuration workflow
-
-## Contact
-
-**soumyaprasad.rana@gmail.com**
+- Documentation: https://soumyaprasadrana.github.io/maximo-mcp-server
+- Issues: https://github.com/soumyaprasadrana/maximo-mcp-server/issues
+- Related: [maximo-kit](https://github.com/soumyaprasadrana/maximo-kit) -- a Spec Kit extension that
+  drives this server through design-first Maximo configuration recipes
+- Contact: **soumyaprasad.rana@gmail.com**

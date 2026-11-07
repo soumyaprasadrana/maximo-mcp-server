@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-11-02T18:56:22.805Z",
-  "schema_mode": "loose",
-  "tool_count": 51,
+  "generated_at": "2026-11-07T03:24:29.980Z",
+  "schema_mode": "strict",
+  "tool_count": 59,
   "tools": [
     {
       "name": "ctx_create",
@@ -39,7 +39,9 @@
             "type": "string"
           }
         },
-        "required": ["session_id"]
+        "required": [
+          "session_id"
+        ]
       }
     },
     {
@@ -59,7 +61,9 @@
             "type": "string"
           }
         },
-        "required": ["session_id"]
+        "required": [
+          "session_id"
+        ]
       }
     },
     {
@@ -101,7 +105,10 @@
             }
           }
         },
-        "required": ["session_id", "keys"]
+        "required": [
+          "session_id",
+          "keys"
+        ]
       }
     },
     {
@@ -127,10 +134,16 @@
           "mode": {
             "description": "'merge' (default) deep-merges updates; 'replace' overwrites the entire context.",
             "type": "string",
-            "enum": ["merge", "replace"]
+            "enum": [
+              "merge",
+              "replace"
+            ]
           }
         },
-        "required": ["session_id", "updates"]
+        "required": [
+          "session_id",
+          "updates"
+        ]
       }
     },
     {
@@ -144,7 +157,11 @@
           "action": {
             "description": "on = start Admin Mode; off = end it; cancel = abort a stalled transition.",
             "type": "string",
-            "enum": ["on", "off", "cancel"]
+            "enum": [
+              "on",
+              "off",
+              "cancel"
+            ]
           },
           "confirm": {
             "description": "Must be true to proceed. Set it only after the human has explicitly approved this specific transition.",
@@ -152,7 +169,79 @@
             "type": "boolean"
           }
         },
-        "required": ["action"]
+        "required": [
+          "action"
+        ]
+      }
+    },
+    {
+      "name": "maximo_aggregate",
+      "title": "Aggregate (Group By)",
+      "description": "Groups the records of an object structure and computes counts / sums / averages / min / max per group, inside Maximo -- e.g. work orders per status, or total estimated labor hours per site. Use it instead of loading records to count them.\n\ngroupBy: 1-5 columns of the main object. aggregates: e.g. [{fn:'count'}, {fn:'sum', attribute:'estlabhrs'}]; count is always included. where filters the rows BEFORE grouping (OSLC where syntax, as in os_query_builder). orderBy: a group column or an aggregate key like 'sum.estlabhrs' with optional '-' for descending (default: -count). Filtering on an aggregate value (HAVING) is not supported by Maximo. Read-only.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "osName": {
+            "description": "Object structure, e.g. MXAPIWODETAIL.",
+            "type": "string"
+          },
+          "groupBy": {
+            "description": "Group columns, e.g. [\"siteid\",\"status\"].",
+            "minItems": 1,
+            "maxItems": 5,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "aggregates": {
+            "description": "Aggregates per group. count of rows is always added.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "fn": {
+                  "description": "count, sum, avg, min or max.",
+                  "type": "string",
+                  "enum": [
+                    "count",
+                    "sum",
+                    "avg",
+                    "min",
+                    "max"
+                  ]
+                },
+                "attribute": {
+                  "description": "Numeric column for sum/avg/min/max; for count omit it (count of rows).",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "fn"
+              ]
+            }
+          },
+          "where": {
+            "description": "Raw OSLC where applied before grouping, e.g. istask=0 and siteid=\"BEDFORD\".",
+            "type": "string"
+          },
+          "orderBy": {
+            "description": "Sort key: a group column or e.g. 'sum.estlabhrs'; prefix '-' for descending. Default -count.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Maximum groups returned (default 200).",
+            "default": 200,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          }
+        },
+        "required": [
+          "osName",
+          "groupBy"
+        ]
       }
     },
     {
@@ -193,7 +282,11 @@
                 "op": {
                   "description": "insert = add a new element relative to an anchor; replace = swap the whole element with this id; remove = delete the element with this id.",
                   "type": "string",
-                  "enum": ["insert", "replace", "remove"]
+                  "enum": [
+                    "insert",
+                    "replace",
+                    "remove"
+                  ]
                 },
                 "anchorId": {
                   "description": "insert only: existing control id to anchor against (e.g. 'specification').",
@@ -202,7 +295,10 @@
                 "position": {
                   "description": "insert only: place the fragment before or after the anchor element.",
                   "type": "string",
-                  "enum": ["before", "after"]
+                  "enum": [
+                    "before",
+                    "after"
+                  ]
                 },
                 "targetId": {
                   "description": "replace/remove only: the control id to replace or remove.",
@@ -213,7 +309,9 @@
                   "type": "string"
                 }
               },
-              "required": ["op"]
+              "required": [
+                "op"
+              ]
             }
           },
           "confirm": {
@@ -222,7 +320,9 @@
             "type": "boolean"
           }
         },
-        "required": ["action"]
+        "required": [
+          "action"
+        ]
       }
     },
     {
@@ -250,7 +350,7 @@
             "type": "string"
           },
           "statusDate": {
-            "description": "ISO 8601 effective date for the status change. Defaults to now if omitted.",
+            "description": "ISO 8601 effective date for the status change. Omit it for 'now': Maximo then applies its OWN current time, which avoids BMXAA4673E when the MCP host's clock differs from Maximo's.",
             "type": "string"
           },
           "actionName": {
@@ -266,7 +366,43 @@
             "type": "string"
           }
         },
-        "required": ["osName", "restId", "newStatus"]
+        "required": [
+          "osName",
+          "restId",
+          "newStatus"
+        ]
+      }
+    },
+    {
+      "name": "maximo_complete_workflow_assignment",
+      "title": "Complete Workflow Assignment",
+      "description": "Routes a workflow assignment, as the Inbox 'Route Workflow' does: accepted=true takes the task's POSITIVE route (onAccept), accepted=false the NEGATIVE route (onReject); memo is recorded with it.\n\nTwo steps: call WITHOUT confirm first -- nothing is sent; you get the assignment, its owner and both routes to show the user. Then call again with confirm=true.\n\nOutcomes: routed (the workflow moved on); input_node_reached (the next node asks for a choice that Maximo only accepts in an interactive UI session -- the assignment stays ACTIVE, the choices are returned; tell the user to finish it in the Maximo Inbox); workflow_call_failed (Maximo's own reason, verbatim).",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "assignmentId": {
+            "description": "assignmentId from maximo_get_workflow_assignments (or the numeric wfassignmentid).",
+            "type": "string"
+          },
+          "accepted": {
+            "description": "true = positive route (onAccept), false = negative route (onReject).",
+            "type": "boolean"
+          },
+          "memo": {
+            "description": "Memo recorded with the routing.",
+            "type": "string"
+          },
+          "confirm": {
+            "description": "false (default) = plan only, nothing sent. true = route it.",
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "assignmentId",
+          "accepted"
+        ]
       }
     },
     {
@@ -281,7 +417,11 @@
             "description": "status = read-only report (default); provision = install/update; uninstall = remove.",
             "default": "status",
             "type": "string",
-            "enum": ["status", "provision", "uninstall"]
+            "enum": [
+              "status",
+              "provision",
+              "uninstall"
+            ]
           },
           "dryRun": {
             "description": "For provision/uninstall. TRUE (default) reports the exact changes without writing. Set false only after a human has reviewed the dry run.",
@@ -375,7 +515,10 @@
             "type": "string"
           }
         },
-        "required": ["osName", "restId"]
+        "required": [
+          "osName",
+          "restId"
+        ]
       }
     },
     {
@@ -409,7 +552,12 @@
           "operation": {
             "description": "Filter by operation type.",
             "type": "string",
-            "enum": ["create", "update", "delete", "commit"]
+            "enum": [
+              "create",
+              "update",
+              "delete",
+              "commit"
+            ]
           },
           "limit": {
             "description": "Maximum rows to return.",
@@ -431,7 +579,7 @@
     {
       "name": "maximo_get_metadata",
       "title": "Get Maximo Metadata",
-      "description": "Resolves a maximo:// URI and returns Maximo metadata. Use to discover Object Structures, field names, child relationships, and schemas before building queries.\n\n=== SUPPORTED URIs ===\n  maximo://os/search/{query}                         : find OS by keyword (start here)\n  maximo://os/{osName}/schema                        : parent field names for select/where (API-exposed only)\n  maximo://os/{osName}/relatedObjects                : children this OS exposes: objectName (dot-notation prefix in where), relation (child select key), cardinality\n  maximo://os/{osName}/subschemas/{childObjectName}  : child field names, comma-separated for multiple children\n  maximo://os/{osName}/object/{objectName}/attributes/{attrOrCsv} : OS-scoped attribute metadata (maxType, domain, length, required) for one or comma-separated attributes; {objectName} is a name from relatedObjects (or the primary object)\n  maximo://object/{objectName}/relationships/compact : ALL relationships on an object — relationshipName, targetObject, whereClause (the join keys).\n                                                      Use when the relationship you need is NOT in relatedObjects: those names work in a\n                                                      'rel.<relationshipName>{...}' select and in childCollection, and whereClause gives the keys for a cross-OS hop.\n                                                      Add /relationships (no /compact) for remarks, which describe cardinality. Large payload.\n\n=== AVOID (unless instructed) ===\n  maximo://object/{objectName} and .../attributes - raw MBO-level, not OS-scoped, ignores security constraints\n\n=== WORKFLOW ===\n  1. search/{intent} to find OS  2. schema for parent fields  3. relatedObjects for exposed children  4. subschemas/{child} for child fields  5. os_query_builder\n  (relationship not exposed by the OS? object/{primaryObject}/relationships/compact to find the door, then rel. select or childCollection)\n  (optional: os/{osName}/object/{objectName}/attributes/{attr} for attribute types/domains before staging updates)",
+      "description": "Resolves a maximo:// URI and returns Maximo metadata. Use to discover Object Structures, field names, child relationships, and schemas before building queries.\n\n=== SUPPORTED URIs ===\n  maximo://os/search/{query}                         : find OS by keyword (start here)\n  maximo://os/{osName}                               : the OS summary, incl. queryCapability = its saved queries / KPIs (names for os_query_builder savedQuery)\n  maximo://os/{osName}/schema                        : parent field names for select/where (API-exposed only)\n  maximo://os/{osName}/relatedObjects                : children this OS exposes: objectName (dot-notation prefix in where), relation (child select key), cardinality\n  maximo://os/{osName}/subschemas/{childObjectName}  : child field names, comma-separated for multiple children\n  maximo://os/{osName}/object/{objectName}/attributes/{attrOrCsv} : OS-scoped attribute metadata (maxType, domain, length, required) for one or comma-separated attributes; {objectName} is a name from relatedObjects (or the primary object)\n  maximo://object/{objectName}/relationships/compact : ALL relationships on an object — relationshipName, targetObject, whereClause (the join keys).\n                                                      Use when the relationship you need is NOT in relatedObjects: those names work in a\n                                                      'rel.<relationshipName>{...}' select and in childCollection, and whereClause gives the keys for a cross-OS hop.\n                                                      Add /relationships (no /compact) for remarks, which describe cardinality. Large payload.\n\n=== AVOID (unless instructed) ===\n  maximo://object/{objectName} and .../attributes - raw MBO-level, not OS-scoped, ignores security constraints\n\n=== WORKFLOW ===\n  1. search/{intent} to find OS  2. schema for parent fields  3. relatedObjects for exposed children  4. subschemas/{child} for child fields  5. os_query_builder\n  (relationship not exposed by the OS? object/{primaryObject}/relationships/compact to find the door, then rel. select or childCollection)\n  (optional: os/{osName}/object/{objectName}/attributes/{attr} for attribute types/domains before staging updates)",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -446,13 +594,15 @@
             "type": "boolean"
           }
         },
-        "required": ["uri"]
+        "required": [
+          "uri"
+        ]
       }
     },
     {
       "name": "maximo_get_url",
       "title": "Get Maximo URL",
-      "description": "GET any URL on the configured Maximo and return the raw response (status, content type, body). A read-only escape hatch for endpoints no other tool covers, e.g. '/oslc/whoami', '/api/os/mxapiwo/<restId>/woactivity', '/api/error/messages/BMXAA4195E'.\n\nurl is a path on this Maximo ('/api/os/mxapiwo?oslc.pageSize=5', context root added for you) or a full URL on the same host. Add query parameters in the URL or in `params`; add request headers in `headers` (credential headers are refused).\n\nLimits, so this stays read-only: GET only; same Maximo host only; redirects are not followed; `action=` query parameters and /api/script or /oslc/script paths are refused (they can change data -- use maximo_invoke_action / maximo_invoke_automation_script). JSON is returned parsed; large or binary bodies are truncated or omitted (use ws_get_attachment for files).\n\nPrefer os_query_builder + ws_load for record queries -- they validate against metadata and feed the working set.",
+      "description": "GET any URL on the configured Maximo and return the raw response (status, content type, body). A read-only escape hatch for endpoints no other tool covers, e.g. '/api/whoami', '/api/os/mxapiwo/<restId>/woactivity', '/api/error/messages/BMXAA4195E'. Use /api/... paths: on MAS, /oslc/... paths redirect API-key callers to the login page.\n\nurl is a path on this Maximo ('/api/os/mxapiwo?oslc.pageSize=5', context root added for you) or a full URL on the same host. Add query parameters in the URL or in `params`; add request headers in `headers` (credential headers are refused).\n\nLimits, so this stays read-only: GET only; same Maximo host only; redirects are not followed; `action=` query parameters and /api/script or /oslc/script paths are refused (they can change data -- use maximo_invoke_action / maximo_invoke_automation_script). JSON is returned parsed; large or binary bodies are truncated or omitted (use ws_get_attachment for files).\n\nPrefer os_query_builder + ws_load for record queries -- they validate against metadata and feed the working set.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -486,45 +636,58 @@
             "maximum": 2000000
           }
         },
-        "required": ["url"]
+        "required": [
+          "url"
+        ]
       }
     },
     {
       "name": "maximo_get_workflow_assignments",
       "title": "Get Workflow Assignments",
-      "description": "Queries WFASSIGNMENT to list active workflow tasks pending a response. Returns the owning record (ownerid, ownertable), process, task description, and assigned person/role. Use ownerid + ownertable with maximo_send_workflow_response to action an assignment. Set includeAllowedActions=true to fetch valid action names in the same call.",
+      "description": "Lists workflow assignments from MXAPIWFASSIGNMENT -- by default only OPEN ones (assignstatus ACTIVE) that the API user can see. Each assignment comes with: assignmentId (pass it to maximo_complete_workflow_assignment), process, task, who it is assigned to, the owning record (owner.table + owner.id = the record's unique id, plus owner.description), and choices -- the routes of the task node, with onAccept (positive route) and onReject (negative route).\n\nTo act on an assignment use maximo_complete_workflow_assignment. Read-only.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
           "wfAssignmentOsName": {
-            "description": "Object Structure for workflow assignments. Default: MXAPIWFASSIGNMENT (OOTB Maximo OS). Override only if your environment uses a custom OS name.",
+            "description": "Object structure for assignments. Default MXAPIWFASSIGNMENT; override only for a custom copy.",
             "default": "MXAPIWFASSIGNMENT",
             "type": "string"
           },
+          "status": {
+            "description": "Assignment status filter (ACTIVE, COMPLETE, INACTIVE, ...). Default ACTIVE = open work. Use ALL for no filter.",
+            "default": "ACTIVE",
+            "type": "string"
+          },
           "personId": {
-            "description": "Filter assignments for a specific person (PERSONID). Case-sensitive, matches Maximo person IDs.",
+            "description": "Only assignments for this person (ASSIGNCODE).",
             "type": "string"
           },
           "roleId": {
-            "description": "Filter assignments for a specific role (ROLEID).",
+            "description": "Only assignments for this role (ROLEID).",
             "type": "string"
           },
           "processName": {
-            "description": "Filter by workflow process name (PROCESSNAME). Use maximo_get_metadata to discover available process names.",
+            "description": "Only this workflow process (PROCESSNAME).",
             "type": "string"
           },
           "ownerTable": {
-            "description": "Filter by the object type of the owning record (OWNERTABLE), e.g. WORKORDER, SR, INCIDENT.",
+            "description": "Only this owning object, e.g. WORKORDER, SR, PR.",
             "type": "string"
           },
+          "ownerId": {
+            "description": "Only the assignments of this owning record (its unique id, e.g. WORKORDERID).",
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
           "includeAllowedActions": {
-            "description": "When true, fetches getAllowedActions for each assignment's owning record and includes them in the response. Adds one HTTP call per assignment — use sparingly on large result sets.",
+            "description": "Deprecated and ignored: the route choices are always included as `choices`.",
             "default": false,
             "type": "boolean"
           },
           "pageSize": {
-            "description": "Maximum number of assignments to return. Default 50.",
+            "description": "Maximum assignments to return. Default 50.",
             "default": 50,
             "type": "integer",
             "minimum": 1,
@@ -552,7 +715,10 @@
           "fileType": {
             "description": "FLAT (CSV, default) or XML.",
             "type": "string",
-            "enum": ["FLAT", "XML"]
+            "enum": [
+              "FLAT",
+              "XML"
+            ]
           },
           "preview": {
             "description": "Default true: validate only, write nothing. Pass false to commit the import.",
@@ -575,7 +741,10 @@
             "type": "string"
           }
         },
-        "required": ["osName", "content"]
+        "required": [
+          "osName",
+          "content"
+        ]
       }
     },
     {
@@ -591,7 +760,54 @@
             "type": "string"
           }
         },
-        "required": ["statusUrl"]
+        "required": [
+          "statusUrl"
+        ]
+      }
+    },
+    {
+      "name": "maximo_integration_errors",
+      "title": "Integration Errors",
+      "description": "Shows integration (MIF) problems: view 'errors' = Message Reprocessing (MXAPIMSGREPROC -- messages that failed and wait in an error queue); view 'tracking' = Message Tracking (MXAPIMSGTRACK -- each message with its processing steps and error text). Returns per-interface/status counts plus the latest rows. Filters: interface, externalSystem, status, sinceHours. Reprocessing or deleting messages is not done here. Read-only.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "view": {
+            "description": "errors (default) or tracking.",
+            "default": "errors",
+            "type": "string",
+            "enum": [
+              "errors",
+              "tracking"
+            ]
+          },
+          "interface": {
+            "description": "Interface name (IFACENAME).",
+            "type": "string"
+          },
+          "externalSystem": {
+            "description": "External system (EXTSYSNAME).",
+            "type": "string"
+          },
+          "status": {
+            "description": "Status, e.g. ERROR, HOLD (errors) or ERROR, PROCESSED (tracking).",
+            "type": "string"
+          },
+          "sinceHours": {
+            "description": "Only messages from the last N hours.",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8760
+          },
+          "pageSize": {
+            "description": "Latest rows returned (default 20).",
+            "default": 20,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        }
       }
     },
     {
@@ -623,7 +839,11 @@
             "additionalProperties": {}
           }
         },
-        "required": ["osName", "restId", "actionName"]
+        "required": [
+          "osName",
+          "restId",
+          "actionName"
+        ]
       }
     },
     {
@@ -642,7 +862,10 @@
             "description": "HTTP method used to invoke the script. Default GET.",
             "default": "GET",
             "type": "string",
-            "enum": ["GET", "POST"]
+            "enum": [
+              "GET",
+              "POST"
+            ]
           },
           "body": {
             "description": "Optional JSON body (POST only), available to the script as 'request'.",
@@ -661,7 +884,94 @@
             "additionalProperties": {}
           }
         },
-        "required": ["scriptName"]
+        "required": [
+          "scriptName"
+        ]
+      }
+    },
+    {
+      "name": "maximo_list_reports",
+      "title": "List Reports",
+      "description": "Lists the BIRT reports Maximo offers for an object structure's application (reportname + description). Run one with maximo_run_report. Read-only.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "osName": {
+            "description": "Object structure, e.g. MXAPIWODETAIL, MXAPIASSET.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "osName"
+        ]
+      }
+    },
+    {
+      "name": "maximo_lookup_values",
+      "title": "Lookup Field Values",
+      "description": "Lists the values Maximo accepts for one field -- the same list its lookup dialog shows. Use it before setting a field you do not know valid values for: TABLE-domain fields (assetnum, location, worktype, crewid, failurecode, glaccount, ...) as well as synonym/ALN domains (status, priority).\n\nWithout restId the lookup runs for a NEW record (pass setupdata, e.g. {\"siteid\":\"BEDFORD\"}, to give it context). With restId it runs for that existing record -- for `status` that returns only the statuses valid NEXT. `search` filters the value column with a LIKE match; `where` is a raw OSLC filter on the lookup's own object. Maximo errors (e.g. a lookup that is not configured) are returned verbatim. Read-only.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "osName": {
+            "description": "Object structure the field belongs to, e.g. MXAPIWODETAIL.",
+            "type": "string"
+          },
+          "attribute": {
+            "description": "Field name, e.g. assetnum, location, worktype, status.",
+            "type": "string"
+          },
+          "restId": {
+            "description": "Existing record (rest id). Omit for a new record.",
+            "type": "string"
+          },
+          "setupdata": {
+            "description": "New-record context, e.g. {\"siteid\":\"BEDFORD\",\"orgid\":\"EAGLENA\"}.",
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "search": {
+            "description": "Text to match in the value column (LIKE %text%).",
+            "type": "string"
+          },
+          "searchField": {
+            "description": "Column to search instead of the field itself, e.g. description.",
+            "type": "string"
+          },
+          "where": {
+            "description": "Raw OSLC where on the lookup object, e.g. status=\"OPERATING\".",
+            "type": "string"
+          },
+          "select": {
+            "description": "Columns to return (default: all simple columns).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "pageSize": {
+            "description": "Rows per page, default 25.",
+            "default": 25,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200
+          },
+          "pageno": {
+            "description": "Page number (1-based).",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "osName",
+          "attribute"
+        ]
       }
     },
     {
@@ -693,7 +1003,11 @@
             "type": "string"
           }
         },
-        "required": ["osName", "restId", "newStatus"]
+        "required": [
+          "osName",
+          "restId",
+          "newStatus"
+        ]
       }
     },
     {
@@ -713,27 +1027,38 @@
       }
     },
     {
-      "name": "maximo_send_workflow_response",
-      "title": "Send Workflow Response",
-      "description": "Invokes a workflow action (approve, reject, etc.) on the OWNING Maximo record — not on WFASSIGNMENT itself.\n\ngetAllowedActions is always called first, the action is rejected if not currently allowed.\nOmit actionName to discover valid actions without executing.\n\nCommon action names (vary by WF config): wfappr, wfcanreq, wfreject, wfaccept, wfreturn.\nUse maximo_get_workflow_assignments with includeAllowedActions=true to confirm exact names.",
+      "name": "maximo_run_report",
+      "title": "Run Report",
+      "description": "Runs a BIRT report and returns the file (PDF by default) as an embedded resource, plus its size. Use maximo_list_reports for the names. `where` limits the records (OSLC where on the object structure, e.g. wonum=\"1001\"); `parameters` are passed to the report as same-named request parameters. Reports can take several seconds. Files larger than MCP_MAX_REPORT_MB (default 10) are refused. Read-only.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "properties": {
           "osName": {
-            "description": "Object Structure of the OWNING record (e.g. MXAPIWO for a work order). Use maximo_get_metadata to confirm if unsure.",
+            "description": "Object structure, e.g. MXAPIWODETAIL.",
             "type": "string"
           },
-          "restId": {
-            "description": "Rest ID of the owning record (from the assignment's ownerid field).",
+          "reportName": {
+            "description": "Report design name from maximo_list_reports, e.g. woprint.rptdesign.",
             "type": "string"
           },
-          "actionName": {
-            "description": "Workflow action name to invoke (e.g. wfappr, wfcanreq, wfreject). Omit to get a list of currently allowed actions without executing anything.",
+          "where": {
+            "description": "OSLC where selecting the records, e.g. wonum=\"1001\".",
             "type": "string"
           },
-          "params": {
-            "description": "Additional string parameters for the workflow action, if required. Example: { memo: 'Approved by AI agent' }. Pass all values as strings.",
+          "format": {
+            "description": "Output format (default pdf).",
+            "type": "string",
+            "enum": [
+              "pdf",
+              "xls",
+              "xlsx",
+              "doc",
+              "html"
+            ]
+          },
+          "parameters": {
+            "description": "Report parameters, e.g. {\"siteid\":\"BEDFORD\"}.",
             "type": "object",
             "propertyNames": {
               "type": "string"
@@ -743,7 +1068,47 @@
             }
           }
         },
-        "required": ["osName", "restId"]
+        "required": [
+          "osName",
+          "reportName"
+        ]
+      }
+    },
+    {
+      "name": "maximo_send_workflow_response",
+      "title": "Send Workflow Response",
+      "description": "Invokes an allowed ACTION on the OWNING record (not on the assignment) -- for environments whose workflow exposes wsmethod actions on the record itself. For normal assignment routing use maximo_complete_workflow_assignment.\n\nThe record's allowed actions are always checked first; the action is refused if not allowed. Omit actionName to list the allowed actions without executing anything.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "osName": {
+            "description": "Object structure of the OWNING record (e.g. MXAPIWODETAIL).",
+            "type": "string"
+          },
+          "restId": {
+            "description": "Rest id of the owning record (its href's last segment).",
+            "type": "string"
+          },
+          "actionName": {
+            "description": "Allowed action to invoke. Omit to list the allowed actions.",
+            "type": "string"
+          },
+          "params": {
+            "description": "Parameters for the action, as strings, e.g. { memo: 'Approved' }.",
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "osName",
+          "restId"
+        ]
       }
     },
     {
@@ -768,7 +1133,42 @@
             "type": "string"
           }
         },
-        "required": ["sql"]
+        "required": [
+          "sql"
+        ]
+      }
+    },
+    {
+      "name": "maximo_start_workflow",
+      "title": "Start Workflow",
+      "description": "Starts a workflow process on one record (POST <os>/<restId>?action=workflow:<PROCESS>).\n\nTwo steps: call WITHOUT confirm first -- the process is checked (exists, active, and for the same object as the record) and nothing is sent. Then call again with confirm=true. The answer lists the assignments the start created (if visible), or input_node_reached when the process begins with an input node (finish that in the Maximo UI).",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "osName": {
+            "description": "Object structure of the record, e.g. MXAPIWODETAIL, MXAPISR.",
+            "type": "string"
+          },
+          "restId": {
+            "description": "Rest id of the record (from a working set / href).",
+            "type": "string"
+          },
+          "processName": {
+            "description": "Workflow process name (PROCESSNAME), e.g. WOSTATUS.",
+            "type": "string"
+          },
+          "confirm": {
+            "description": "false (default) = plan only. true = start it.",
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "osName",
+          "restId",
+          "processName"
+        ]
       }
     },
     {
@@ -782,7 +1182,11 @@
           "action": {
             "description": "get / list / set.",
             "type": "string",
-            "enum": ["get", "list", "set"]
+            "enum": [
+              "get",
+              "list",
+              "set"
+            ]
           },
           "name": {
             "description": "Property name, e.g. mxe.script.allowbeanscript. Required for get/set.",
@@ -802,752 +1206,433 @@
             "type": "boolean"
           }
         },
-        "required": ["action"]
+        "required": [
+          "action"
+        ]
       }
     },
     {
       "name": "os_query_builder",
       "title": "OSLC Query Builder",
-      "description": "Builds a validated Maximo OSLC query URL and creates an OS Working Set. This is the only entry point to query Maximo data — always call this after maximo_get_metadata.\n\nFILTERING (see field descriptions for full syntax):\n  where        — PARENT filtering only: which parent records come back.\n                 Dot notation (CHILDOBJECT.ATTR) filters parents by a child attribute.\n  childOptions — filters/sorts CHILD rows for a relationship already reached via `select`.\n                 One hop: just `relationship`. Nested past one hop: also set `path` (the\n                 full chain) or the filter targets the wrong MBO and Maximo drops it.\n  tlrange/tlattribute — PARENT-level timeline filter: date-math range around an index\n                 date (today, or a date given via tlattribute='attr=<ISO date>').\n                 <sign><n><unit>, unit one of D/W/M/Y/h/m/s. e.g. tlrange='-3M',\n                 tlattribute='reportdate' -> reportdate within the last 3 months.\n                 childOptions entries support the same pair, scoped to that relationship.\n  domaininternalwhere — PARENT-level filter by an attribute's INTERNAL synonym-domain\n                 value (e.g. WOSTATUS), not the external display value `where` compares\n                 against. '<attr>=v1,v2' -> SQL IN; '<attr>!=v1,v2' -> SQL NOT IN. Independent\n                 of `where` — ANDed to it server-side, never merged into it. childOptions\n                 entries support the same field, scoped to that relationship.\n  addschema — inlines the JSON schema for this exact query's select (attrs, child\n                 blocks, rel. nesting) alongside the data, in one call. Surfaced by\n                 ws_load as meta.schema. Not carried onto Maximo's own next-page href;\n                 re-set addschema:true on each page's own os_query_builder call.\n  pageno — jump straight to page N (1-based) of a pageSize'd result, e.g. pageno:2.\n                 ws_load's meta.paging (pagenum/totalPages/nextPage/previousPage) reports\n                 which page came back and whether more exist -- totalPages needs\n                 collectioncount:true. Surfaced whenever Maximo returns it, pageno or not.\n  count — adds count=1: Maximo runs SELECT COUNT(*) and returns ONLY {totalCount:N}, no\n                 records. Cheapest total; use collectioncount:true if you also need rows. Default false.\n  ignorecollectionref — adds ignorecollectionref=1: drops the *_collectionref child hrefs\n                 from every record (smaller payloads). Default false.\n  op=isnull renders as attr!=STAR, op=isnotnull renders as attr=STAR\n\nRELATED DATA — three ways, in increasing reach. MIND THE NAME: each way wants a\ndifferent token, and the wrong one fails silently (empty, not an error).\n  1. Children already in the OS -> use the child OBJECT NAME, lowercased, as a child block:\n     childSelects {woactivity:[taskid,description]} -> woactivity{taskid,description}.\n     From maximo://os/{osName}/relatedObjects objectName. Its `relation` does NOT work here.\n     Pair with childOptions {relationship: woactivity, where: {...}} to filter it.\n  2. Any relationship, including ones the OS does not expose -> use the RELATIONSHIP NAME\n     in a select string: rel.<relationshipName>{attr,...}. Nests:\n     rel.asset{assetnum,rel.assetmeter{metername}}. Names from\n     maximo://object/{primaryObject}/relationships/compact.\n     Pair with childOptions {relationship, path: [...chain]} to filter a nested hop.\n  3. One parent's child collection as its own query — the simplest single-parent, single-hop\n     filter/sort/page path, and the only way to page or collectioncount child rows:\n     childCollection {parentRecordId, relationship, responseOs}. The path segment accepts\n     EITHER an object name or a relationship name, and the two can resolve to DIFFERENT\n     doors with different rows. Set responseOs to re-render the far side through that OS,\n     which is required for it to expose its own children.\n  All related data is a LIST: 0..N rows, and a 1:1 relationship still arrives as one element.\n  A missing child key means zero rows, never a bad query.\n\nNOT SUPPORTED: aggregation (_dbcount/_dbsum are silently dropped) and parenthesised and/or nesting.\n\nWORKFLOW: maximo_get_metadata (search, schema, relatedObjects), then this tool, then ws_* tools",
+      "description": "Builds a validated Maximo OSLC query URL and creates an OS Working Set. This is the only entry point to query Maximo data — always call this after maximo_get_metadata.\n\nFILTERING (see field descriptions for full syntax):\n  where        — PARENT filtering only: which parent records come back.\n                 Dot notation (CHILDOBJECT.ATTR) filters parents by a child attribute.\n  childOptions — filters/sorts CHILD rows for a relationship already reached via `select`.\n                 One hop: just `relationship`. Nested past one hop: also set `path` (the\n                 full chain) or the filter targets the wrong MBO and Maximo drops it.\n  tlrange/tlattribute — PARENT-level timeline filter: date-math range around an index\n                 date (today, or a date given via tlattribute='attr=<ISO date>').\n                 <sign><n><unit>, unit one of D/W/M/Y/h/m/s. e.g. tlrange='-3M',\n                 tlattribute='reportdate' -> reportdate within the last 3 months.\n                 childOptions entries support the same pair, scoped to that relationship.\n  domaininternalwhere — PARENT-level filter by an attribute's INTERNAL synonym-domain\n                 value (e.g. WOSTATUS), not the external display value `where` compares\n                 against. '<attr>=v1,v2' -> SQL IN; '<attr>!=v1,v2' -> SQL NOT IN. Independent\n                 of `where` — ANDed to it server-side, never merged into it. childOptions\n                 entries support the same field, scoped to that relationship.\n  addschema — inlines the JSON schema for this exact query's select (attrs, child\n                 blocks, rel. nesting) alongside the data, in one call. Surfaced by\n                 ws_load as meta.schema. Not carried onto Maximo's own next-page href;\n                 re-set addschema:true on each page's own os_query_builder call.\n  pageno — jump straight to page N (1-based) of a pageSize'd result, e.g. pageno:2.\n                 ws_load's meta.paging (pagenum/totalPages/nextPage/previousPage) reports\n                 which page came back and whether more exist -- totalPages needs\n                 collectioncount:true. Surfaced whenever Maximo returns it, pageno or not.\n  count -- adds count=1: Maximo runs SELECT COUNT(*) and returns ONLY {totalCount:N}, no\n                 records. Cheapest total; use collectioncount:true if you also need rows. Default false.\n  ignorecollectionref -- adds ignorecollectionref=1: drops the *_collectionref child hrefs\n                 from every record (smaller payloads). Default false.\n  op=isnull renders as attr!=STAR, op=isnotnull renders as attr=STAR\n\nRELATED DATA — three ways, in increasing reach. MIND THE NAME: each way wants a\ndifferent token, and the wrong one fails silently (empty, not an error).\n  1. Children already in the OS -> use the child OBJECT NAME, lowercased, as a child block:\n     childSelects {woactivity:[taskid,description]} -> woactivity{taskid,description}.\n     From maximo://os/{osName}/relatedObjects objectName. Its `relation` does NOT work here.\n     Pair with childOptions {relationship: woactivity, where: {...}} to filter it.\n  2. Any relationship, including ones the OS does not expose -> use the RELATIONSHIP NAME\n     in a select string: rel.<relationshipName>{attr,...}. Nests:\n     rel.asset{assetnum,rel.assetmeter{metername}}. Names from\n     maximo://object/{primaryObject}/relationships/compact.\n     Pair with childOptions {relationship, path: [...chain]} to filter a nested hop.\n  3. One parent's child collection as its own query — the simplest single-parent, single-hop\n     filter/sort/page path, and the only way to page or collectioncount child rows:\n     childCollection {parentRecordId, relationship, responseOs}. The path segment accepts\n     EITHER an object name or a relationship name, and the two can resolve to DIFFERENT\n     doors with different rows. Set responseOs to re-render the far side through that OS,\n     which is required for it to expose its own children.\n  All related data is a LIST: 0..N rows, and a 1:1 relationship still arrives as one element.\n  A missing child key means zero rows, never a bad query.\n\nNOT HERE: aggregation -- use maximo_aggregate (group by with count/sum/avg/min/max). Parenthesised and/or nesting is not supported.\n\nWORKFLOW: maximo_get_metadata (search, schema, relatedObjects), then this tool, then ws_* tools",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Schema for generating a complete OSLC query URL. Provide osName and structured filters, the tool will return a valid OSLC URL.",
+        "description": "Builds a complete OSLC query URL and creates an OS Working Set. WORKFLOW: 1) maximo_get_metadata (search OS, get schema/relatedObjects/subschemas). 2) os_query_builder (build URL, get workingSet ID). 3) ws_load → ws_get_records to read data. 4) ws_set_active → ws_update_field → ws_preview_changes → ws_commit for updates.",
         "type": "object",
         "properties": {
           "osName": {
-            "description": "Maximo Object Structure name, e.g. mxapiasset, mxapipr, mxapiwo",
+            "description": "Maximo Object Structure name (case-insensitive). Examples: MXAPIWODETAIL, MXAPIASSET, MXAPISR. Use maximo_get_metadata maximo://os/search/{intent} to discover the correct OS name.",
             "type": "string"
           },
           "opAction": {
-            "description": "Operation type. Usually query. Future: update, patch, delete. Agents should set this to query when building OSLC GET URLs.",
+            "description": "Operation type. Set to 'query' for all read/search operations.",
             "type": "string"
           },
           "lean": {
-            "description": "If true, adds lean=1 for faster response without metadata (recommended). Defaults to true.",
+            "description": "Adds lean=1 for compact responses. Defaults to true — do not change.",
             "readOnly": true,
             "default": true,
             "type": "boolean"
           },
           "basePath": {
-            "description": "Optional base path override. Default is /api/os. Example: /maximo/oslc/os",
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "description": "Object-structure API: /api/os (default) or /oslc/os. Nothing else is accepted. On MAS keep the default.",
+            "type": "string"
           },
           "relativeuri": {
-            "description": "If true, adds relativeuri=1",
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "description": "Adds relativeuri=1. Optional.",
+            "type": "boolean"
           },
           "internalvalues": {
-            "description": "If true, adds internalvalues=1",
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "description": "Adds internalvalues=1 to return internal codes. Optional.",
+            "type": "boolean"
           },
           "addschema": {
             "description": "If true, adds addschema=1: Maximo inlines the JSON schema for this exact query (attributes reached by `select`, including child/rel. nesting) into the response, alongside the data, in the same call — surfaced by ws_load as `meta.schema`. The schema's shape depends on how deep `select` goes; it is passed through as Maximo returns it, not reshaped. Maximo does not carry this flag onto its own next-page href, so a later page needs addschema:true set again on that page's own os_query_builder call to get its schema too.",
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "boolean"
           },
           "paging": {
-            "description": "If true, adds oslc.paging=true",
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "description": "Adds oslc.paging=true for cursor-based paging. Optional.",
+            "type": "boolean"
+          },
+          "collectioncount": {
+            "description": "Adds collectioncount=1 to include totalCount. Optional.",
+            "type": "boolean"
+          },
+          "count": {
+            "description": "If true, adds count=1: Maximo runs SELECT COUNT(*) for this query and returns ONLY {\"totalCount\": N} -- no records. Cheapest way to get a total; use collectioncount:true instead if you also need the rows. Default false.",
+            "type": "boolean"
+          },
+          "ignorecollectionref": {
+            "description": "If true, adds ignorecollectionref=1: omits the *_collectionref child-collection href fields from every returned record, making responses smaller. Default false.",
+            "type": "boolean"
           },
           "format": {
-            "description": "Optional response format. Sets _format=json or xml",
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": ["json", "xml"]
-              },
-              {
-                "type": "null"
-              }
+            "description": "Response format. Omit for JSON (default).",
+            "type": "string",
+            "enum": [
+              "json",
+              "xml"
             ]
           },
           "select": {
-            "description": "Fields for oslc.select. Accepts plain attribute names, child blocks ({child, attrs} -> child{a,b}), and alias blocks. A plain string may also be a relationship path: 'rel.<relationshipName>{attr,...}' follows any relationship — including ones this object structure does not expose — and nests, e.g. 'rel.asset{assetnum,rel.assetmeter{metername}}'.",
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "fields": {
-                    "type": "array",
-                    "items": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "child": {
-                              "type": "string"
-                            },
-                            "attrs": {
-                              "type": "array",
-                              "items": {
-                                "type": "string"
-                              }
-                            }
-                          },
-                          "required": ["child", "attrs"]
-                        },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "alias": {
-                              "type": "object",
-                              "properties": {
-                                "attr": {
-                                  "type": "string"
-                                },
-                                "as": {
-                                  "type": "string"
-                                }
-                              },
-                              "required": ["attr", "as"]
-                            }
-                          },
-                          "required": ["alias"]
-                        }
-                      ]
-                    }
-                  }
-                },
-                "required": ["fields"]
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "description": "Parent-level attributes to return. Example: ['wonum','description','status','wopriority','siteid']. Use maximo_get_metadata maximo://os/{osName}/schema to discover available field names. For child attributes use childSelects. For aliases use selectAliases. An entry may also be a relationship path: 'rel.<relationshipName>{attr,...}' follows any relationship, including ones this OS does not expose, and nests: 'rel.asset{assetnum,rel.assetmeter{metername}}'.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "rawSelect": {
-            "description": "Raw OSLC select clause string. Overrides structured select if present. Use cautiously. Example: 'wonum,description,status{*}'",
-            "anyOf": [
-              {
+            "description": "Raw OSLC select-clause string. Overrides structured select when present. Use for complex select expressions.",
+            "type": "string"
+          },
+          "childSelects": {
+            "description": "Child attributes, for children this object structure already exposes. Key = the OBJECT NAME from maximo://os/{osName}/relatedObjects, lowercased — NOT its `relation`. (WORKLOG is exposed through relation WOWORKLOG, but the select key is 'worklog'; 'woworklog' returns nothing at all.) Value = array of child field names (from maximo://os/{osName}/subschemas/{childName}). Example: {'woactivity': ['taskid','description'], 'worklog': ['description','createdate']}. Returns ALL child rows — it cannot filter them; use childCollection for that. For relationships this OS does not expose, put 'rel.<relationshipName>{...}' in select instead.",
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "array",
+              "items": {
                 "type": "string"
-              },
-              {
-                "type": "null"
               }
-            ]
+            }
+          },
+          "selectAliases": {
+            "description": "Rename fields in the response. Example: [{attr:'wopriority',as:'priority'}]. Optional.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "attr": {
+                  "description": "Original attribute name.",
+                  "type": "string"
+                },
+                "as": {
+                  "description": "Alias name in the response.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "attr",
+                "as"
+              ]
+            }
           },
           "where": {
-            "description": "PARENT-level filter. Pass a structured conditions array - NOT a raw string. Each condition: { field, op, value }. Conditions are combined with AND by default (set orMode=true for OR). Supported ops: =, !=, <, >, <=, >=, in, like, isnull, isnotnull. Example: { conditions: [{ field: 'siteid', op: '=', value: 'BEDFORD' }, { field: 'status', op: '=', value: 'WAPPR' }] }. Use dot notation to filter parents by child attribute: field='ASSETSPEC.NUMVALUE', op='>', value=300. op=isnull renders as attr!=STAR (NULL check); op=isnotnull renders as attr=STAR (NOT NULL check). For raw OSLC string clauses use rawWhere instead.",
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "conditions": {
-                    "anyOf": [
-                      {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "properties": {
-                            "field": {
-                              "anyOf": [
-                                {
-                                  "type": "string"
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ]
-                            },
-                            "op": {
-                              "description": "Comparison operator. Use isnull to match NULL (renders as attr!=STAR). Use isnotnull to match NOT NULL (renders as attr=STAR). For equality use =, for inequality !=. For set membership use in with an array value. For child-based parent filtering (e.g. fetch assets where a child spec has NUMVALUE>300), set field to childObjectName.ATTRIBUTENAME (dot notation) and use a standard operator.",
-                              "anyOf": [
-                                {
-                                  "type": "string",
-                                  "enum": [
-                                    "=",
-                                    "!=",
-                                    "<",
-                                    ">",
-                                    "<=",
-                                    ">=",
-                                    "in",
-                                    "like",
-                                    "isnull",
-                                    "isnotnull"
-                                  ]
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ]
-                            },
-                            "value": {
-                              "anyOf": [
-                                {
-                                  "anyOf": [
-                                    {
-                                      "anyOf": [
-                                        {
-                                          "type": "string"
-                                        },
-                                        {
-                                          "type": "number"
-                                        },
-                                        {
-                                          "type": "boolean"
-                                        }
-                                      ]
-                                    },
-                                    {
-                                      "type": "array",
-                                      "items": {
-                                        "anyOf": [
-                                          {
-                                            "type": "string"
-                                          },
-                                          {
-                                            "type": "number"
-                                          },
-                                          {
-                                            "type": "boolean"
-                                          }
-                                        ]
-                                      }
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ]
-                            }
-                          }
-                        }
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  }
-                }
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "orMode": {
-            "description": "If true, WHERE conditions will be combined using OR instead of AND.",
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "orderBy": {
-            "description": "oslc.orderBy rules. Use +attr (ASC) or -attr (DESC). Also accepts attr asc or attr desc. Direction is required — plain attr is rejected. Main object attributes only. Example: { rules: [+wopriority, -reportdate] }",
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "rules": {
-                    "anyOf": [
-                      {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  }
-                }
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "pageSize": {
-            "description": "Number of records per page. Sets oslc.pageSize. Example: 100.",
-            "anyOf": [
-              {
-                "default": 20,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "pageno": {
-            "description": "Jump directly to page N of the paged result (1-based), e.g. pageno:2 for the second page. Mirrors Maximo's own nextPage.href, which is this same query with `pageno=<n>` appended -- setting it yourself skips having to capture and replay that href. Use with `pageSize`; check ws_load's `meta.paging.totalPages` (needs `collectioncount:true`) to know how many pages exist, and `meta.paging.pagenum` to confirm which page came back.",
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "childOptions": {
-            "description": "Filter, sort, and limit child rows for relationships already reached via `select` (a child block or a rel.<name>{...} path). Each entry needs `relationship`; add `path` (the full chain) for anything nested past one top-level hop, or the filter is resolved against the wrong MBO and Maximo silently discards it. The relationship must ALSO appear in `select` — otherwise there are no rows in the response to filter, regardless of the filter itself being correct. A missing `limit` gets a safety default (see `limit`/`noLimit`).",
-            "anyOf": [
-              {
+            "description": "PARENT-level filters. Controls WHICH parent records are returned.",
+            "type": "object",
+            "properties": {
+              "conditions": {
+                "description": "Array of filter conditions (AND by default, OR if orMode=true). Example: [{field:'siteid',op:'=',value:'BEDFORD'},{field:'status',op:'in',inValues:['WAPPR','WSCH']}]. For NUMERIC/YORN fields always pass value as string — server coerces automatically. For child-based parent filtering use dot notation: field='ASSETSPEC.NUMVALUE'.",
                 "type": "array",
                 "items": {
                   "type": "object",
                   "properties": {
-                    "relationship": {
-                      "description": "RELATIONSHIP NAME from relatedObjects (NOT object name) that this entry applies to. If `path` is given, must equal path[path.length-1]. REQUIRED.",
+                    "field": {
+                      "description": "Attribute name to filter on. For child dot-notation: CHILDOBJECT.ATTRNAME (e.g. ASSETSPEC.NUMVALUE). Use maximo_get_metadata maximo://os/{osName}/schema for parent fields, maximo://os/{osName}/relatedObjects for child object names.",
                       "type": "string"
                     },
-                    "path": {
-                      "description": "Full relationship-name chain from the object structure's primary object down to and including `relationship`, e.g. ['MODIFYWORKLOG','PERSON','SMS'] for a filter on SMS nested under PERSON nested under MODIFYWORKLOG. Each name is resolved against the relationships of the MBO that owns THAT hop — which changes at every level and is usually NOT this object structure's primary object. Mirrors the corresponding rel.<name>{rel.<name>{...}} nesting in `select`. Omit for a single top-level hop (equivalent to path:[relationship]).",
-                      "anyOf": [
-                        {
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        },
-                        {
-                          "type": "null"
-                        }
+                    "op": {
+                      "description": "Comparison operator. = (equal), != (not equal), < > <= >= (numeric/date range). in: use inValues array instead of value. like: substring match (value becomes LIKE pattern). isnull: field is NULL (renders attr!=\"*\"). isnotnull: field is NOT NULL (renders attr=\"*\").",
+                      "type": "string",
+                      "enum": [
+                        "=",
+                        "!=",
+                        "<",
+                        ">",
+                        "<=",
+                        ">=",
+                        "in",
+                        "like",
+                        "isnull",
+                        "isnotnull"
                       ]
                     },
-                    "where": {
-                      "anyOf": [
-                        {
-                          "type": "object",
-                          "properties": {
-                            "conditions": {
-                              "anyOf": [
-                                {
-                                  "type": "array",
-                                  "items": {
-                                    "type": "object",
-                                    "properties": {
-                                      "field": {
-                                        "anyOf": [
-                                          {
-                                            "type": "string"
-                                          },
-                                          {
-                                            "type": "null"
-                                          }
-                                        ]
-                                      },
-                                      "op": {
-                                        "description": "Comparison operator. Use isnull to match NULL (renders as attr!=STAR). Use isnotnull to match NOT NULL (renders as attr=STAR). For equality use =, for inequality !=. For set membership use in with an array value. For child-based parent filtering (e.g. fetch assets where a child spec has NUMVALUE>300), set field to childObjectName.ATTRIBUTENAME (dot notation) and use a standard operator.",
-                                        "anyOf": [
-                                          {
-                                            "type": "string",
-                                            "enum": [
-                                              "=",
-                                              "!=",
-                                              "<",
-                                              ">",
-                                              "<=",
-                                              ">=",
-                                              "in",
-                                              "like",
-                                              "isnull",
-                                              "isnotnull"
-                                            ]
-                                          },
-                                          {
-                                            "type": "null"
-                                          }
-                                        ]
-                                      },
-                                      "value": {
-                                        "anyOf": [
-                                          {
-                                            "anyOf": [
-                                              {
-                                                "anyOf": [
-                                                  {
-                                                    "type": "string"
-                                                  },
-                                                  {
-                                                    "type": "number"
-                                                  },
-                                                  {
-                                                    "type": "boolean"
-                                                  }
-                                                ]
-                                              },
-                                              {
-                                                "type": "array",
-                                                "items": {
-                                                  "anyOf": [
-                                                    {
-                                                      "type": "string"
-                                                    },
-                                                    {
-                                                      "type": "number"
-                                                    },
-                                                    {
-                                                      "type": "boolean"
-                                                    }
-                                                  ]
-                                                }
-                                              }
-                                            ]
-                                          },
-                                          {
-                                            "type": "null"
-                                          }
-                                        ]
-                                      }
-                                    }
-                                  }
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ]
-                            }
-                          }
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
+                    "value": {
+                      "description": "Comparison value as a string. For NUMERIC/INTEGER/FLOAT fields the server coerces automatically. For YORN (boolean) fields pass '1' (true) or '0' (false). Do NOT use for the 'in' operator — use inValues instead.",
+                      "type": "string"
                     },
-                    "opmodeor": {
-                      "anyOf": [
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "tlrange": {
-                      "description": "Timeline range filter, applied around an index date (today, or the date given in `tlattribute` after '='). Grammar: <sign><n><unit> where sign is '+' (future of the index date), '-' (past), or '+-' (both directions, i.e. index-n .. index+n); n is a positive integer; unit is one of D=days, W=weeks (n*7 days), M=months, Y=years, h=hours, m=minutes, s=seconds (case-sensitive — 'M' is months, 'm' is minutes). Examples: '-3M' = last 3 months, '+3M' = next 3 months, '+-3Y' = 3 years back through 3 years forward, '-7D' = last 7 days, '-24h' = last 24 hours. Requires `tlattribute`. Unrecognized units are rejected the same way Maximo's own TimelineFilterHelper.getDate rejects them server-side (invaliddatetimeunit).",
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "tlattribute": {
-                      "description": "Date/datetime attribute `tlrange` is measured against, e.g. 'reportdate', 'schedstart'. Defaults the index date to now. To index on a specific date instead of now, append '=<ISO-8601 date>' to the attribute name, e.g. 'reportdate=2026-01-01T00:00:00-05:00' — passed through raw to Maximo as-is (not parsed/validated here). Required when `tlrange` is set.",
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "searchTerms": {
-                      "description": "Full-text search scoped to this relationship's rows. Rendered as <pmbo>.<rel>.searchTerms=<value>.",
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "searchAttributes": {
-                      "description": "Attribute names scoping searchTerms for this relationship. Only used when searchTerms is set.",
-                      "anyOf": [
-                        {
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "domaininternalwhere": {
-                      "description": "Filter by the INTERNAL value(s) of an attribute bound to a synonym domain (e.g. WOSTATUS) instead of the external display value oslc.where compares against. Grammar: <attrName>[=|!=]internalVal1,internalVal2,... — '=' generates SQL IN, '!=' generates SQL NOT IN; one or more comma-delimited internal values, no null. Example: 'status=APPR,INPRG' matches internal APPR or INPRG; 'status!=APPR,INPRG' excludes them. Independent of `where`/`rawWhere` — Maximo ANDs it to oslc.where server-side, it is not merged into that clause. Rendered as <pmbo>.<rel>.domaininternalwhere=<value>.",
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "orderBy": {
-                      "anyOf": [
-                        {
-                          "type": "object",
-                          "properties": {
-                            "rules": {
-                              "anyOf": [
-                                {
-                                  "type": "array",
-                                  "items": {
-                                    "type": "string"
-                                  }
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ]
-                            }
-                          }
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "limit": {
-                      "anyOf": [
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "noLimit": {
-                      "description": "Explicitly disable the automatic safety limit applied to relationship traversals that omit `limit`. Use with caution — an unbounded nested fetch can exhaust the Maximo JVM.",
-                      "anyOf": [
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    }
-                  },
-                  "required": ["relationship"]
-                }
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "childCollection": {
-            "description": "Query ONE parent record's child collection directly — the simplest way to filter/sort/page child rows for a SINGLE parent, and the only way to page or collectioncount child rows. For filtering/sorting nested relationships across every returned parent record in one request, use childOptions (with `path` for anything nested past one hop) instead. The top-level select/where/orderBy/pageSize/collectioncount then apply to the CHILD rows. Set parentRecordId to the parent's rest id or href, and relationship to the child segment (a child object name from relatedObjects, or any relationship name — both are accepted and may resolve to DIFFERENT doors). Set responseOs to reach a related object that this OS does not expose (e.g. work order -> asset): it renders the far side through that OS, exposing its full attribute set and its own children.",
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "parentRecordId": {
-                    "description": "Parent record rest id, or its full href (the last path segment is used).",
-                    "type": "string"
-                  },
-                  "relationship": {
-                    "description": "Child collection segment: a related object name or a relationship name.",
-                    "type": "string"
-                  },
-                  "responseOs": {
-                    "description": "Optional object structure to render the far side through, e.g. MXAPIASSET. Required to expose the related object's own children.",
-                    "anyOf": [
-                      {
+                    "inValues": {
+                      "description": "Array of allowed values for the 'in' operator. Use ONLY when op='in'. Example: ['WAPPR','WSCH','APPR']. The server coerces numeric types automatically.",
+                      "type": "array",
+                      "items": {
                         "type": "string"
-                      },
-                      {
-                        "type": "null"
                       }
-                    ]
+                    }
                   }
-                },
-                "required": ["parentRecordId", "relationship"]
-              },
-              {
-                "type": "null"
+                }
               }
-            ]
+            }
+          },
+          "orMode": {
+            "description": "If true, WHERE conditions are combined with OR instead of AND.",
+            "type": "boolean"
           },
           "rawWhere": {
-            "description": "Raw OSLC where clause string. Overrides structured where if present. Use cautiously.",
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "description": "Raw OSLC where-clause string. Overrides structured where when present. Use for complex expressions.",
+            "type": "string"
           },
-          "collectioncount": {
-            "description": "If true, adds collectioncount=1 to return totalCount in responseInfo.",
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "count": {
-            "description": "If true, adds count=1: Maximo runs SELECT COUNT(*) for this query and returns ONLY {\"totalCount\": N} -- no records. Cheapest way to get a total; use collectioncount:true instead if you also need the rows. Default false.",
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "ignorecollectionref": {
-            "description": "If true, adds ignorecollectionref=1: omits the *_collectionref child-collection href fields from every returned record, making responses smaller. Default false.",
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "savedQuery": {
-            "description": "Name of a saved query defined in Maximo. Example: MYFAVORITEQUERY. Overrides where + select when provided.",
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "savedQueryParams": {
-            "description": "Optional parameters for savedQuery. Each param is rendered as sqp:paramName=paramValue. Example: {mboKey:mboKeyValue, insubquery:insubqueryValue, inlimit:10}",
-            "anyOf": [
-              {
-                "type": "object",
-                "propertyNames": {
-                  "type": "string"
-                },
-                "additionalProperties": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "boolean"
-                    }
-                  ]
-                }
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "searchTerms": {
-            "description": "Full-text search term(s) for OSLC text search. Rendered as oslc.searchTerms=<value>. Use with searchAttributes to target specific fields. Example: 'pump failure' searches across searchAttributes for that phrase.",
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "searchAttributes": {
-            "description": "Attribute names to scope the text search. Rendered as searchAttributes=attr1,attr2. Only used when searchTerms is set. Example: ['description', 'templateid'] limits search to those two fields. Omit to let Maximo search all indexed text fields.",
-            "anyOf": [
-              {
+          "orderBy": {
+            "description": "Sort order for parent records.",
+            "type": "object",
+            "properties": {
+              "rules": {
+                "description": "Sort rules. Use +attr (ASC) or -attr (DESC). Direction is REQUIRED. Example: ['+wopriority','-reportdate'].",
                 "type": "array",
                 "items": {
                   "type": "string"
                 }
-              },
-              {
-                "type": "null"
               }
+            }
+          },
+          "pageSize": {
+            "description": "Records per page. Sets oslc.pageSize. Default 20.",
+            "type": "number"
+          },
+          "pageno": {
+            "description": "Jump directly to page N of the paged result (1-based), e.g. pageno:2 for the second page. Mirrors Maximo's own nextPage.href, which is this same query with `pageno=<n>` appended -- setting it yourself skips having to capture and replay that href. Use with `pageSize`; check ws_load's `meta.paging.totalPages` (needs `collectioncount:true`) to know how many pages exist, and `meta.paging.pagenum` to confirm which page came back.",
+            "type": "number"
+          },
+          "childOptions": {
+            "description": "Filter, sort, and limit child rows for relationships already reached via `select` (childSelects or a rel.<name>{...} path). Each entry needs `relationship`; add `path` (the full chain) for anything nested past one top-level hop, or the filter is resolved against the wrong MBO and Maximo silently discards it. The relationship must ALSO appear in `select`/`childSelects` — otherwise there are no rows in the response to filter. A missing `limit` gets a safety default (see `limit`/`noLimit`).",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "relationship": {
+                  "description": "RELATIONSHIP NAME from relatedObjects (NOT object name) that this entry applies to. Same key namespace as childSelects. If `path` is given, must equal path[path.length-1]. REQUIRED.",
+                  "type": "string"
+                },
+                "path": {
+                  "description": "Full relationship-name chain from the object structure's primary object down to and including `relationship`, e.g. ['MODIFYWORKLOG','PERSON','SMS']. Each name is resolved against the relationships of the MBO that owns THAT hop — which changes at every level and is usually NOT this object structure's primary object. Mirrors the corresponding rel.<name>{rel.<name>{...}} nesting in `select`. Omit for a single top-level hop (equivalent to path:[relationship]).",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "where": {
+                  "description": "Filter which child rows appear within each returned parent record.",
+                  "type": "object",
+                  "properties": {
+                    "conditions": {
+                      "description": "Filter conditions for this child relationship. Same structure as parent where.conditions.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "description": "Attribute name to filter on. For child dot-notation: CHILDOBJECT.ATTRNAME (e.g. ASSETSPEC.NUMVALUE). Use maximo_get_metadata maximo://os/{osName}/schema for parent fields, maximo://os/{osName}/relatedObjects for child object names.",
+                            "type": "string"
+                          },
+                          "op": {
+                            "description": "Comparison operator. = (equal), != (not equal), < > <= >= (numeric/date range). in: use inValues array instead of value. like: substring match (value becomes LIKE pattern). isnull: field is NULL (renders attr!=\"*\"). isnotnull: field is NOT NULL (renders attr=\"*\").",
+                            "type": "string",
+                            "enum": [
+                              "=",
+                              "!=",
+                              "<",
+                              ">",
+                              "<=",
+                              ">=",
+                              "in",
+                              "like",
+                              "isnull",
+                              "isnotnull"
+                            ]
+                          },
+                          "value": {
+                            "description": "Comparison value as a string. For NUMERIC/INTEGER/FLOAT fields the server coerces automatically. For YORN (boolean) fields pass '1' (true) or '0' (false). Do NOT use for the 'in' operator — use inValues instead.",
+                            "type": "string"
+                          },
+                          "inValues": {
+                            "description": "Array of allowed values for the 'in' operator. Use ONLY when op='in'. Example: ['WAPPR','WSCH','APPR']. The server coerces numeric types automatically.",
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "opmodeor": {
+                  "description": "If true, child conditions are combined with OR instead of AND.",
+                  "type": "boolean"
+                },
+                "tlrange": {
+                  "description": "Timeline range filter, applied around an index date (today, or the date given in `tlattribute` after '='). Grammar: <sign><n><unit> where sign is '+' (future of the index date), '-' (past), or '+-' (both directions, i.e. index-n .. index+n); n is a positive integer; unit is one of D=days, W=weeks (n*7 days), M=months, Y=years, h=hours, m=minutes, s=seconds (case-sensitive — 'M' is months, 'm' is minutes). Examples: '-3M' = last 3 months, '+3M' = next 3 months, '+-3Y' = 3 years back through 3 years forward, '-7D' = last 7 days, '-24h' = last 24 hours. Requires `tlattribute`. Unrecognized units are rejected the same way Maximo's own TimelineFilterHelper.getDate rejects them server-side (invaliddatetimeunit).",
+                  "type": "string"
+                },
+                "tlattribute": {
+                  "description": "Date/datetime attribute `tlrange` is measured against, e.g. 'reportdate', 'schedstart'. Defaults the index date to now. To index on a specific date instead of now, append '=<ISO-8601 date>' to the attribute name, e.g. 'reportdate=2026-01-01T00:00:00-05:00' — passed through raw to Maximo as-is (not parsed/validated here). Required when `tlrange` is set.",
+                  "type": "string"
+                },
+                "searchTerms": {
+                  "description": "Full-text search scoped to this relationship's rows. Rendered as <pmbo>.<rel>.searchTerms=<value>.",
+                  "type": "string"
+                },
+                "searchAttributes": {
+                  "description": "Attribute names scoping searchTerms for this relationship. Only used when searchTerms is set.",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "domaininternalwhere": {
+                  "description": "Filter by the INTERNAL value(s) of an attribute bound to a synonym domain (e.g. WOSTATUS) instead of the external display value oslc.where compares against. Grammar: <attrName>[=|!=]internalVal1,internalVal2,... — '=' generates SQL IN, '!=' generates SQL NOT IN; one or more comma-delimited internal values, no null. Example: 'status=APPR,INPRG' matches internal APPR or INPRG; 'status!=APPR,INPRG' excludes them. Independent of `where`/`rawWhere` — Maximo ANDs it to oslc.where server-side, it is not merged into that clause. Rendered as <pmbo>.<rel>.domaininternalwhere=<value>.",
+                  "type": "string"
+                },
+                "orderBy": {
+                  "description": "Sort order for child records within each parent.",
+                  "type": "object",
+                  "properties": {
+                    "rules": {
+                      "description": "Sort rules for child records. Use +attr (ASC) or -attr (DESC). Example: ['+scheduledate','-startdate'].",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "limit": {
+                  "description": "Maximum number of child rows to return per parent record.",
+                  "type": "number"
+                },
+                "noLimit": {
+                  "description": "Explicitly disable the automatic safety limit applied to relationship traversals that omit `limit`. Use with caution — an unbounded nested fetch can exhaust the Maximo JVM.",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "relationship"
+              ]
+            }
+          },
+          "childCollection": {
+            "description": "Query ONE parent record's child collection directly — the simplest way to filter/sort/page child rows for a SINGLE parent, and the only way to page or collectioncount child rows. For filtering/sorting nested relationships across every returned parent record in one request, use childOptions (with `path` for anything nested past one hop) instead. The top-level select/where/orderBy/pageSize/collectioncount then apply to the CHILD rows. Set parentRecordId to the parent's rest id or href, and relationship to the child segment (a child object name from relatedObjects, or any relationship name — both are accepted and may resolve to DIFFERENT doors). Set responseOs to reach a related object that this OS does not expose (e.g. work order -> asset): it renders the far side through that OS, exposing its full attribute set and its own children.",
+            "type": "object",
+            "properties": {
+              "parentRecordId": {
+                "description": "Parent record rest id, or its full href (the last path segment is used).",
+                "type": "string"
+              },
+              "relationship": {
+                "description": "Child collection segment: a related object name or a relationship name.",
+                "type": "string"
+              },
+              "responseOs": {
+                "description": "Optional object structure to render the far side through, e.g. MXAPIASSET. Required to expose the related object's own children.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "parentRecordId",
+              "relationship"
             ]
+          },
+          "savedQuery": {
+            "description": "Name of a saved query (or KPI) defined in Maximo -- CASE-SENSITIVE, as listed in queryCapability of maximo://os/{osName}. A KPI is passed as KPI:<kpiname>. It is ANDed with any where you also give (both are sent), and select still controls the columns.",
+            "type": "string"
+          },
+          "savedQueryParams": {
+            "description": "Parameters for savedQuery. All values as strings. Rendered as sqp:paramName=paramValue. Example: {mboKey:'12345',inlimit:'50'}.",
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "searchTerms": {
+            "description": "Full-text search term(s). Rendered as oslc.searchTerms=<value>. Use with searchAttributes to limit which fields are searched. Example: 'pump failure'. Can be combined with where conditions.",
+            "type": "string"
+          },
+          "searchAttributes": {
+            "description": "Attribute names to scope the text search. Rendered as searchAttributes=attr1,attr2. Only used when searchTerms is set. Example: ['description','templateid']. Omit to search all indexed text fields.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "tlrange": {
             "description": "Timeline range filter, applied around an index date (today, or the date given in `tlattribute` after '='). Grammar: <sign><n><unit> where sign is '+' (future of the index date), '-' (past), or '+-' (both directions, i.e. index-n .. index+n); n is a positive integer; unit is one of D=days, W=weeks (n*7 days), M=months, Y=years, h=hours, m=minutes, s=seconds (case-sensitive — 'M' is months, 'm' is minutes). Examples: '-3M' = last 3 months, '+3M' = next 3 months, '+-3Y' = 3 years back through 3 years forward, '-7D' = last 7 days, '-24h' = last 24 hours. Requires `tlattribute`. Unrecognized units are rejected the same way Maximo's own TimelineFilterHelper.getDate rejects them server-side (invaliddatetimeunit).",
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string"
           },
           "tlattribute": {
             "description": "Date/datetime attribute `tlrange` is measured against, e.g. 'reportdate', 'schedstart'. Defaults the index date to now. To index on a specific date instead of now, append '=<ISO-8601 date>' to the attribute name, e.g. 'reportdate=2026-01-01T00:00:00-05:00' — passed through raw to Maximo as-is (not parsed/validated here). Required when `tlrange` is set.",
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string"
           },
           "domaininternalwhere": {
             "description": "Filter by the INTERNAL value(s) of an attribute bound to a synonym domain (e.g. WOSTATUS) instead of the external display value oslc.where compares against. Grammar: <attrName>[=|!=]internalVal1,internalVal2,... — '=' generates SQL IN, '!=' generates SQL NOT IN; one or more comma-delimited internal values, no null. Example: 'status=APPR,INPRG' matches internal APPR or INPRG; 'status!=APPR,INPRG' excludes them. Independent of `where`/`rawWhere` — Maximo ANDs it to oslc.where server-side, it is not merged into that clause. Rendered as domaininternalwhere=<value>.",
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "type": "string"
           }
         },
-        "required": ["osName", "opAction"]
+        "required": [
+          "osName",
+          "opAction"
+        ]
+      }
+    },
+    {
+      "name": "ws_add_attachment",
+      "title": "Add Attachment",
+      "description": "Attaches a file to one record of a working set (Maximo doclinks). Give the content as text or contentBase64. NOT staged: on confirm Maximo stores it immediately -- ws_commit is not involved. Call without confirm first (nothing is sent; you get what would be uploaded), then with confirm=true. Files over MCP_MAX_ATTACHMENT_MB (default 25) are refused.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Attach a file to a record. Not staged: Maximo stores it immediately on confirm.",
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "WorkingSet ID. REQUIRED.",
+            "type": "string"
+          },
+          "restID": {
+            "description": "REST ID or href of the record to attach the file to (loaded in this working set). REQUIRED.",
+            "type": "string"
+          },
+          "fileName": {
+            "description": "File name shown in Maximo, e.g. inspection-notes.txt. REQUIRED.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "contentBase64": {
+            "description": "File content, base64-encoded (binary files).",
+            "type": "string"
+          },
+          "text": {
+            "description": "File content as plain text (alternative to contentBase64).",
+            "type": "string"
+          },
+          "mimeType": {
+            "description": "MIME type (default from the file extension, else application/octet-stream).",
+            "type": "string"
+          },
+          "description": {
+            "description": "Attachment description (default: the file name).",
+            "type": "string",
+            "maxLength": 254
+          },
+          "docType": {
+            "description": "Maximo document folder (DOCTYPE), default Attachments.",
+            "type": "string",
+            "maxLength": 16
+          },
+          "confirm": {
+            "description": "false (default) = plan only, nothing sent. true = upload now.",
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "restID",
+          "fileName"
+        ]
       }
     },
     {
@@ -1556,7 +1641,7 @@
       "description": "Append a single child row to a relation-typed child array on a parent record without resubmitting the entire existing array. Use instead of ws_update_field when adding one child row to a relationship (e.g. adding a synonymdomain row).",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Append a single child row to a relation-typed child array on a parent record, without having to resubmit the entire existing array. Safer than ws_update_field for adding one child. Workflow: ws_load → ws_set_active → ws_add_child_record → ws_preview_changes → ws_commit.",
+        "description": "Append a single child row to a relation-typed child array on a parent record. Strict mode: child field values are strings.",
         "type": "object",
         "properties": {
           "id": {
@@ -1564,23 +1649,30 @@
             "type": "string"
           },
           "restID": {
-            "description": "REST identifier of the PARENT record to add the child row to. Use 'active' for the current active record, or the record's href/restId. REQUIRED.",
+            "description": "REST identifier of the PARENT record, or 'active'. REQUIRED.",
             "type": "string"
           },
           "field": {
-            "description": "Relationship/child-array field name on the parent (e.g. 'synonymdomain'). Must be a relation-typed array field — discover child field names via maximo_get_metadata maximo://os/{osName}/relatedObjects. REQUIRED.",
+            "description": "Relationship/child-array field name on the parent. REQUIRED.",
             "type": "string"
           },
           "record": {
-            "description": "The new child row's fields as fieldName → value pairs (e.g. { value: 'X', description: 'Y' }). REQUIRED.",
+            "description": "The new child row's fields as fieldName → string value pairs. Pass scalar values as strings; for YORN (boolean) use '1' or '0'. REQUIRED.",
             "type": "object",
             "propertyNames": {
               "type": "string"
             },
-            "additionalProperties": {}
+            "additionalProperties": {
+              "type": "string"
+            }
           }
         },
-        "required": ["id", "restID", "field", "record"]
+        "required": [
+          "id",
+          "restID",
+          "field",
+          "record"
+        ]
       }
     },
     {
@@ -1589,7 +1681,7 @@
       "description": "Apply updates across many records using filter/updater.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Apply batch updates across multiple records using filter logic or natural language instructions. More efficient than looping ws_update_field for bulk changes.",
+        "description": "Apply batch updates across multiple records. Strict mode: spec.value is always a string (server coerces types).",
         "type": "object",
         "properties": {
           "id": {
@@ -1601,7 +1693,7 @@
             "type": "object",
             "properties": {
               "filter": {
-                "description": "Filter expression to select which records to update. Example: 'STATUS == \"BROKEN\"'. OPTIONAL — omit to update all records.",
+                "description": "Filter expression to select records. Example: 'STATUS == \"BROKEN\"'. OPTIONAL.",
                 "type": "string"
               },
               "field": {
@@ -1609,16 +1701,20 @@
                 "type": "string"
               },
               "value": {
-                "description": "Value to assign for simple batch updates. Required if field is provided."
+                "description": "New value as a string. Required if field is provided. For YORN (boolean) use '1' or '0'.",
+                "type": "string"
               },
               "updater": {
-                "description": "Natural language transformation description (not code). OPTIONAL. Example: 'Set priority to 1 for all records where siteid is BEDFORD'.",
+                "description": "Natural language description of the transformation. OPTIONAL.",
                 "type": "string"
               }
             }
           }
         },
-        "required": ["id", "spec"]
+        "required": [
+          "id",
+          "spec"
+        ]
       }
     },
     {
@@ -1655,13 +1751,15 @@
             "type": "boolean"
           }
         },
-        "required": ["id"]
+        "required": [
+          "id"
+        ]
       }
     },
     {
       "name": "ws_commit_status",
       "title": "Get Commit Status",
-      "description": "Poll a background commit started by ws_commit. Pass the asyncId it returned, or a working set id to get that set's most recent commit job. Reports running | succeeded | failed and, once terminal, the full commit result including any Maximo BMXAA* error. Use this after a ws_commit RPC timeout instead of re-committing — a retry is refused while the first commit is still in flight.",
+      "description": "Poll a background commit started by ws_commit. Pass the asyncId it returned, or a working set id to get that set's most recent commit job. Reports running | succeeded | failed and, once terminal, the full commit result including any Maximo BMXAA* error. Use this after a ws_commit RPC timeout instead of re-committing -- a retry is refused while the first commit is still in flight.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "description": "Poll a background commit started by ws_commit. Returns status 'running' | 'succeeded' | 'failed', plus the full commit result (hrefs, HTTP status, or the Maximo BMXAA* error) once terminal. Large object-config commits typically take 2-4 minutes; poll about every 30 seconds. The working set stays locked until the job reaches a terminal state.",
@@ -1696,7 +1794,10 @@
             "type": "string"
           }
         },
-        "required": ["id", "restID"]
+        "required": [
+          "id",
+          "restID"
+        ]
       }
     },
     {
@@ -1713,7 +1814,9 @@
             "type": "string"
           }
         },
-        "required": ["id"]
+        "required": [
+          "id"
+        ]
       }
     },
     {
@@ -1730,7 +1833,9 @@
             "type": "string"
           }
         },
-        "required": ["id"]
+        "required": [
+          "id"
+        ]
       }
     },
     {
@@ -1746,7 +1851,9 @@
             "type": "string"
           }
         },
-        "required": ["id"]
+        "required": [
+          "id"
+        ]
       }
     },
     {
@@ -1771,7 +1878,11 @@
             "type": "string"
           }
         },
-        "required": ["id", "restID", "attachmentRef"]
+        "required": [
+          "id",
+          "restID",
+          "attachmentRef"
+        ]
       }
     },
     {
@@ -1792,7 +1903,9 @@
             "type": "boolean"
           }
         },
-        "required": ["id"]
+        "required": [
+          "id"
+        ]
       }
     },
     {
@@ -1807,7 +1920,9 @@
             "type": "string"
           }
         },
-        "required": ["osName"]
+        "required": [
+          "osName"
+        ]
       }
     },
     {
@@ -1828,7 +1943,10 @@
             "type": "string"
           }
         },
-        "required": ["id", "restID"]
+        "required": [
+          "id",
+          "restID"
+        ]
       }
     },
     {
@@ -1849,7 +1967,9 @@
             "type": "boolean"
           }
         },
-        "required": ["id"]
+        "required": [
+          "id"
+        ]
       }
     },
     {
@@ -1858,7 +1978,7 @@
       "description": "Update multiple fields across records.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Update multiple fields across one or many records in a single call. More efficient than calling ws_update_field repeatedly.",
+        "description": "Update multiple fields across one or many records in a single call. Strict mode: use stringFields for text/date/boolean, numericFields for numbers.",
         "type": "object",
         "properties": {
           "id": {
@@ -1866,7 +1986,7 @@
             "type": "string"
           },
           "updates": {
-            "description": "List of update operations. Must have at least one entry. REQUIRED.",
+            "description": "List of update operations. Each entry must provide restID and at least one of stringFields or numericFields. REQUIRED.",
             "minItems": 1,
             "type": "array",
             "items": {
@@ -1876,46 +1996,37 @@
                   "description": "REST ID or 'active' to target the current active record. REQUIRED.",
                   "type": "string"
                 },
-                "fields": {
-                  "description": "Map of fieldName → newValue. At least one field required. For YORN fields use 1/0. For dates use ISO 8601 strings.",
+                "stringFields": {
+                  "description": "Map of fieldName → string value. For ALN, UPPER, LOWER, DATE, DATETIME fields and YORN booleans (use '1' or '0'). Provide stringFields, numericFields, or both.",
                   "type": "object",
                   "propertyNames": {
                     "type": "string"
                   },
                   "additionalProperties": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "boolean"
-                      },
-                      {
-                        "type": "null"
-                      },
-                      {
-                        "type": "array",
-                        "items": {}
-                      },
-                      {
-                        "type": "object",
-                        "propertyNames": {
-                          "type": "string"
-                        },
-                        "additionalProperties": {}
-                      }
-                    ]
+                    "type": "string"
+                  }
+                },
+                "numericFields": {
+                  "description": "Map of fieldName → numeric value. For NUMERIC, INTEGER, FLOAT, DECIMAL, DURATION fields. Provide numericFields, stringFields, or both.",
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "type": "number"
                   }
                 }
               },
-              "required": ["restID", "fields"]
+              "required": [
+                "restID"
+              ]
             }
           }
         },
-        "required": ["id", "updates"]
+        "required": [
+          "id",
+          "updates"
+        ]
       }
     },
     {
@@ -1936,7 +2047,9 @@
             "type": "boolean"
           }
         },
-        "required": ["id"]
+        "required": [
+          "id"
+        ]
       }
     },
     {
@@ -1954,7 +2067,9 @@
             "minLength": 1
           }
         },
-        "required": ["id"]
+        "required": [
+          "id"
+        ]
       }
     },
     {
@@ -1975,13 +2090,15 @@
             "type": "boolean"
           }
         },
-        "required": ["id"]
+        "required": [
+          "id"
+        ]
       }
     },
     {
       "name": "ws_remove",
       "title": "Remove WorkingSet",
-      "description": "Remove a working set instance from memory.",
+      "description": "Remove a working set from this server's memory (loaded records and any staged, uncommitted changes). Does not touch Maximo. Call it when you are done with a working set.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "description": "Remove the WorkingSet from memory entirely. Call this when the session is complete to free resources.",
@@ -1992,7 +2109,9 @@
             "type": "string"
           }
         },
-        "required": ["id"]
+        "required": [
+          "id"
+        ]
       }
     },
     {
@@ -2001,7 +2120,7 @@
       "description": "Remove a single child row (by natural-key values or array index) from a relation-typed child array on a parent record. Fails clearly if no matching row is found. Use instead of ws_update_field when removing one child row.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Remove a single child row (by natural-key values or array index) from a relation-typed child array on a parent record. Fails clearly if no matching row is found. Workflow: ws_load → ws_set_active → ws_remove_child_record → ws_preview_changes → ws_commit.",
+        "description": "Remove a single child row from a relation-typed child array on a parent record. Strict mode: keyValues are strings.",
         "type": "object",
         "properties": {
           "id": {
@@ -2013,25 +2132,31 @@
             "type": "string"
           },
           "field": {
-            "description": "Relationship/child-array field name on the parent (e.g. 'synonymdomain'). REQUIRED.",
+            "description": "Relationship/child-array field name on the parent. REQUIRED.",
             "type": "string"
           },
           "keyValues": {
-            "description": "Natural-key field → value pairs identifying the child row to remove (e.g. { value: 'X' }). Provide keyValues OR index — not both.",
+            "description": "Natural-key field → string value pairs identifying the child row to remove. Provide keyValues OR index — not both.",
             "type": "object",
             "propertyNames": {
               "type": "string"
             },
-            "additionalProperties": {}
+            "additionalProperties": {
+              "type": "string"
+            }
           },
           "index": {
-            "description": "0-based index of the child row to remove within the array. Provide index OR keyValues — not both.",
+            "description": "0-based index of the child row to remove. Provide index OR keyValues — not both.",
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
           }
         },
-        "required": ["id", "restID", "field"]
+        "required": [
+          "id",
+          "restID",
+          "field"
+        ]
       }
     },
     {
@@ -2052,7 +2177,10 @@
             "type": "string"
           }
         },
-        "required": ["id", "restID"]
+        "required": [
+          "id",
+          "restID"
+        ]
       }
     },
     {
@@ -2081,7 +2209,11 @@
             "additionalProperties": {}
           }
         },
-        "required": ["id", "temp_id", "record"]
+        "required": [
+          "id",
+          "temp_id",
+          "record"
+        ]
       }
     },
     {
@@ -2090,7 +2222,7 @@
       "description": "Update a single attribute on a single record.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Update a single field on a specific record in the WorkingSet. Workflow: os_query_builder → ws_load → ws_set_active → ws_update_field → ws_preview_changes → ws_commit.",
+        "description": "Update a single field on a specific record. Provide id, restID, field, and exactly one of stringValue or numericValue. Workflow: os_query_builder → ws_load → ws_set_active → ws_update_field → ws_preview_changes → ws_commit.",
         "type": "object",
         "properties": {
           "id": {
@@ -2102,39 +2234,23 @@
             "type": "string"
           },
           "field": {
-            "description": "Attribute/field name to update (case-insensitive). Use maximo_get_metadata maximo://os/{osName}/schema to discover field names. REQUIRED.",
+            "description": "Attribute/field name to update. Use maximo_get_metadata maximo://os/{osName}/schema to discover field names. REQUIRED.",
             "type": "string"
           },
-          "field_value": {
-            "description": "New value for the field. Accepts string, number, boolean, null, array, or object. For YORN (boolean) fields pass 1 or 0. For date fields use ISO 8601 string. REQUIRED.",
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              },
-              {
-                "type": "array",
-                "items": {}
-              },
-              {
-                "type": "object",
-                "propertyNames": {
-                  "type": "string"
-                },
-                "additionalProperties": {}
-              }
-            ]
+          "stringValue": {
+            "description": "New value as a string. Use for ALN, UPPER, LOWER, DATE, DATETIME fields and for YORN booleans (pass '1' for true, '0' for false). Provide either stringValue OR numericValue — not both.",
+            "type": "string"
+          },
+          "numericValue": {
+            "description": "New value as a number. Use for NUMERIC, INTEGER, FLOAT, DECIMAL, DURATION fields. Provide either numericValue OR stringValue — not both.",
+            "type": "number"
           }
         },
-        "required": ["id", "restID", "field", "field_value"]
+        "required": [
+          "id",
+          "restID",
+          "field"
+        ]
       }
     }
   ]

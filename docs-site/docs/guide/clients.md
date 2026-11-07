@@ -18,7 +18,8 @@ Add the server to `claude_desktop_config.json`:
         "MAXIMO_URL": "https://your-maximo-host/maximo",
         "MAXIMO_API_KEY": "your-api-key",
         "MCP_DATA_BASE_DIR": "C:\\maximo-mcp",
-        "MCP_LOGS_DIR": "C:\\maximo-mcp\\logs"
+        "MCP_LOGS_DIR": "C:\\maximo-mcp\\logs",
+        "MCP_RECONCILE_LAZY": "true"
       }
     }
   }
@@ -100,6 +101,11 @@ curl -X POST http://localhost:8001/oauth/token \
 ### 3. Connect
 
 Send `Authorization: Bearer <access_token>` on every MCP HTTP request.
+
+To run each request as a specific Maximo user, start the server with `--caller-apikey` and send
+that user's API key in an `x-maximo-apikey` header; working sets are then private to their
+creator. `--host 127.0.0.1` restricts the listener to local connections. Strict-schema importers
+(watsonx Orchestrate, Copilot Studio) need `--strict-tool-schema`.
 
 ### Managing clients
 

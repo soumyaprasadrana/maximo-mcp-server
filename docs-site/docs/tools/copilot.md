@@ -1,12 +1,27 @@
 # Copilot Tools
 
-::: warning v1.5.0 -- NOT AVAILABLE ON npm
-Everything on this page is part of the **1.5.0** line. The last version published to the npm
-registry is **1.3.7**, so `npm install` will **not** give you these tools.
-
-They are documented here so the capability is public even where the build is on request.
-For access: **soumyaprasad.rana@gmail.com**. See [Versions and access](/versions).
+::: tip In the npm package -- registered with `--copilot-mode`
+These tools ship in the npm package like every other tool. Because each one runs an automation script inside Maximo, they are
+registered **only when `MCP_COPILOT_MODE=true`** (`--copilot-mode`), and never under
+`--readonly`. `maximo_appdesigner_edit` is copilot-only too: it writes through `DMMAXAPPS`. See [Versions and access](/versions).
 :::
+
+## How these tools reach Maximo
+
+1. **Provisioning (once, explicit).** `maximo_copilot_setup` (or `--setup-copilot` on the command
+   line) uploads small Jython scripts named `MCPUTILS.*` through the `MXAPIAUTOSCRIPT` object
+   structure, and adds one signature option per script (`MCP*`) to the existing CONFIGUR and
+   PROPMAINT applications. It never grants them. A restart only *verifies*; it never writes.
+2. **A grant (human).** An administrator grants the `MCP*` options to the API user's security
+   group. The server never writes `APPLICATIONAUTH`.
+3. **Every call.** The tool calls `GET` or `POST /api/script/MCPUTILS.<NAME>` with the API key in
+   a header. Maximo's script handler checks the script's `authapp` / `authsigoption` against the
+   caller's grants (`BMXAA0028E` when missing) before the script runs; the script then checks the
+   real IBM permission for privileged actions (for example `CONFIGUR.CONFIGURE` for an apply).
+
+`maximo_reload_cache` prefers `MCPUTILS.CACHE` and falls back to deploying its own
+`MXKIT.RELOADCACHE`; it is copilot-only for the same reason. To hide any tool regardless of mode,
+list it in `MCP_DISABLED_TOOLS` -- see [Configuration](/guide/configuration#tool-exposure).
 
 Copilot tools take the server past reading and writing business data into **governed platform
 configuration** -- Configure Database, Admin Mode, system properties, and diagnostics that the
@@ -17,12 +32,12 @@ OSLC, or possible but quietly dangerous. Each one below closes a specific, measu
 
 ## Why this matters
 
-Before 1.5.0, a configuration workflow driven by an agent hit a wall: it could stage a change
-but not apply it, could not tell whether a change needed a maintenance window, could not read a
-system property, and had no protection against Maximo's own configuration pitfalls -- the ones
+Without these tools, a configuration workflow driven by an agent hits a wall: it can stage a change
+but not apply it, cannot tell whether a change needs a maintenance window, cannot read a
+system property, and has no protection against Maximo's own configuration pitfalls -- the ones
 the platform accepts silently and only surfaces later.
 
-1.5.0 closes all four: it drives Configure Database end to end, reads and sets properties, and
+These tools close all four: it drives Configure Database end to end, reads and sets properties, and
 adds guards that catch a dangerous change at preview instead of at the database.
 
 ## Configuration safety guards

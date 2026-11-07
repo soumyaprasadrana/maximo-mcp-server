@@ -26,10 +26,21 @@ Typical flow: **search** → **schema** → **relatedObjects** → **subschemas*
 
 ## Search
 
-Object Structure search combines keyword matching with optional semantic (vector) search. Set `MCP_EMBEDDINGS_MODE=local` (or `openai`) to enable embeddings; the default `none` uses keyword + hybrid ranking and is recommended for production. `MAXIMO_OS_SEARCH_LIMIT` caps how many candidates are returned.
+Object Structure search combines keyword matching with optional semantic (vector) search. Set `MCP_EMBEDDINGS_MODE=local` to enable embeddings (it needs `@xenova/transformers`, installed separately -- it is not a dependency of the package); the default `none` uses keyword + hybrid ranking and is recommended. `MAXIMO_OS_SEARCH_LIMIT` caps how many candidates are returned.
 
 ## Sync lifecycle
 
-Metadata is downloaded on first startup in three resumable stages (API metadata → schemas → MBO metadata). Progress is checkpointed, so an interrupted sync resumes rather than restarting. While a sync is in progress, normal tools return `metadata_sync_in_progress`; the dev-mode `mcp_server_status` and `mcp_read_logs` tools bypass that guard.
+Metadata is downloaded on first startup in three resumable stages (API metadata -> schemas -> MBO metadata). Progress is checkpointed, so an interrupted sync resumes rather than restarting. While a sync is in progress, normal tools return `metadata_sync_in_progress`; `mcp_server_status` (always registered) and `mcp_read_logs` (`--dev-mode` or `--readonly`) bypass that guard.
+
+## On-demand mode
+
+`MCP_RECONCILE_LAZY=true` skips the startup sync. Before a tool runs, the server works out which
+object structures (and dot-notation objects) the call needs -- from `osName`, the working set id,
+`childCollection.responseOs`, or the `maximo://` URI -- and fetches only those that are missing or
+past their TTL: the catalog from `/api/apimeta`, the OS schema and subschemas, and the member
+objects from `MAXMCPMETADATA` (one OS per call with the current script; the whole payload once
+with the original one). Fetches are written to the same tables the full sync uses, so everything
+downstream is unchanged. Concurrent calls share one fetch, a failed refresh keeps serving the
+previous data, and a `meta_cache` table records when each entry was fetched and when it expires.
 
 See [Installation & Setup → First run](/guide/getting-started#first-run-metadata-sync) and the sync settings in the [Configuration Reference](/guide/configuration#metadata-sync).
