@@ -4,14 +4,14 @@
 
 - **Node.js 20+** and **npm 10+**
 - Network access to your Maximo instance
-- The **`MAXMCPMETADATA`** automation script deployed in Maximo (mandatory — see below)
+- The **`MAXMCPMETADATA`** automation script deployed in Maximo (mandatory -- see below)
 
 ```bash
 node -v   # must be >= 20
 npm -v
 ```
 
-## Step 1 — Deploy the `MAXMCPMETADATA` automation script
+## Step 1 -- Deploy the `MAXMCPMETADATA` automation script
 
 The metadata engine uses this script to extract object, attribute, and relationship metadata from Maximo.
 
@@ -20,7 +20,7 @@ The metadata engine uses this script to extract object, attribute, and relations
 
 In Maximo:
 
-1. **System Configuration → Platform Configuration → Automation Scripts**
+1. **System Configuration -> Platform Configuration -> Automation Scripts**
 2. Create a new script named `MAXMCPMETADATA`
 3. Paste the content from the URL above
 4. **Activate** the script
@@ -29,7 +29,7 @@ In Maximo:
 Without this script the server still starts, but metadata sync fails and every tool returns `metadata_sync_in_progress` (or `metadata_fetch_failed` with `--reconcile-lazy`).
 :::
 
-## Step 2 — Install the server
+## Step 2 -- Install the server
 
 ```bash
 npm install -g @soumyaprasadrana/maximo-mcp-server
@@ -42,7 +42,7 @@ maximo-mcp-server --version
 maximo-mcp-server --help
 ```
 
-## Step 3 — Create persistent storage
+## Step 3 -- Create persistent storage
 
 The server keeps its metadata/OAuth database and logs on disk. Point these at persistent paths **outside** the Node working directory.
 
@@ -63,7 +63,7 @@ New-Item -ItemType Directory -Force -Path C:\maximo-mcp, C:\maximo-mcp\data, C:\
 | `<data-dir>/data/meta.db` | `MCP_DATA_BASE_DIR` | SQLite metadata + OAuth client database |
 | `<logs-dir>/` | `MCP_LOGS_DIR` | Rolling log files (`mcp.YYYY-MM-DD.N.log`) |
 
-## Step 4 — Start the server
+## Step 4 -- Start the server
 
 Provide config via environment variables, CLI flags, or a `.env` file.
 
@@ -97,14 +97,14 @@ MCP_RECONCILE_LAZY=true
 
 :::
 
-Most agents (Claude Desktop, etc.) launch the server for you — see [Connecting Clients](/guide/clients).
+Most agents (Claude Desktop, etc.) launch the server for you -- see [Connecting Clients](/guide/clients).
 
 ## First run: metadata sync
 
-On first startup the server downloads all Object Structure metadata. On large environments this takes **3–6 minutes**.
+On first startup the server downloads all Object Structure metadata. On large environments this takes **3-6 minutes**.
 
-- **Resumable** — if interrupted, the next startup resumes from the last completed stage.
-- **Persisted** — once complete, subsequent startups skip it.
+- **Resumable** -- if interrupted, the next startup resumes from the last completed stage.
+- **Persisted** -- once complete, subsequent startups skip it.
 
 | Stage | Fetches |
 | --- | --- |

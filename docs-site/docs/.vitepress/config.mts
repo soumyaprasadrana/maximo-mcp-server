@@ -1,12 +1,12 @@
 import { defineConfig } from "vitepress";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// IMPORTANT — GitHub Pages base path
+// -----------------------------------------------------------------------------
+// IMPORTANT -- GitHub Pages base path
 // For a PROJECT page the site is served at https://<user>.github.io/<repo>/,
 // so `base` MUST equal "/<repo-name>/" (with leading & trailing slash).
 // Override at build time without editing this file:  DOCS_BASE=/my-repo/ npm run docs:build
 // Use "/" for a user/org page (<user>.github.io) or a custom domain (CNAME).
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 const base = process.env.DOCS_BASE ?? "/maximo-mcp-server/";
 
 const REPO = "https://github.com/soumyaprasadrana/maximo-mcp-server";
@@ -17,7 +17,7 @@ export default defineConfig({
   lang: "en-US",
   title: "Maximo MCP Server",
   description:
-    "Enterprise MCP server for IBM Maximo — metadata-aware query building and a staged Working Set transaction model for AI agents.",
+    "Enterprise MCP server for IBM Maximo -- metadata-aware query building and a staged Working Set transaction model for AI agents.",
   cleanUrls: true,
   lastUpdated: true,
   ignoreDeadLinks: true,
@@ -28,10 +28,10 @@ export default defineConfig({
     ["meta", { name: "viewport", content: "width=device-width, initial-scale=1.0" }],
     ["meta", { name: "keywords", content: "Maximo, MCP, OSLC, IBM, query builder, working set, AI agent, OAuth" }],
     ["meta", { name: "author", content: "Soumya Prasad Rana" }],
-    ["meta", { name: "description", content: "Enterprise MCP server for IBM Maximo — metadata-aware query building and staged Working Set transactions for AI agents" }],
+    ["meta", { name: "description", content: "Enterprise MCP server for IBM Maximo -- metadata-aware query building and staged Working Set transactions for AI agents" }],
     // Open Graph / Social Media
     ["meta", { property: "og:type", content: "website" }],
-    ["meta", { property: "og:title", content: "Maximo MCP Server — Enterprise AI Integration" }],
+    ["meta", { property: "og:title", content: "Maximo MCP Server -- Enterprise AI Integration" }],
     ["meta", {
       property: "og:description",
       content: "Governed AI-agent access to IBM Maximo: metadata discovery, validated OSLC queries, and staged preview/commit changes.",
@@ -126,7 +126,7 @@ export default defineConfig({
 
     footer: {
       message: "Proprietary software, free for non-commercial use. Not open source -- see LICENSE.",
-      copyright: "© Soumya Prasad Rana",
+      copyright: "(c) Soumya Prasad Rana",
     },
   },
 });

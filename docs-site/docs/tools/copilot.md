@@ -94,6 +94,8 @@ cascade is neither.
 | `maximo_sql_query` | Read-only SQL for questions the Object Structures cannot answer -- above all "what did that configuration change actually alter?" | human approval on **every** call |
 | `maximo_system_property` | Get / list / set system properties, with live-refresh and an explicit `restartRequired` flag | `confirm` on `set` |
 | `maximo_copilot_setup` | Install / inspect / remove the utility scripts and their signature options | dry-run by default; never writes grants |
+| `maximo_reload_cache` | Reload Maximo caches live (no Admin Mode, no restart) so out-of-band configuration writes show up; server-wide and expensive, so once at the end | human approval per run; `CONFIGUR.MCPRELOADCACHE` grant when `MCPUTILS.CACHE` is installed |
+| `maximo_appdesigner_edit` | Edit an application's presentation XML by anchored delta (`init` / `modify` / `preview` / `commit` / `verify`), never moving the full document; a server restart is needed before the change shows | `confirm` on `commit`; write access to `DMMAXAPPS` |
 
 `maximo_sql_query` is deliberately narrow: a single statement, `SELECT` or `WITH ... SELECT`
 only, every DML and DDL keyword refused before the database is touched, results capped, and the

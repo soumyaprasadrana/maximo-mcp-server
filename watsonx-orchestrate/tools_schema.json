@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-11-07T03:24:29.980Z",
+  "server_version": "2.1.0",
   "schema_mode": "strict",
   "tool_count": 59,
   "tools": [
     {
       "name": "ctx_create",
       "title": "Create Context Session",
-      "description": "Create a new context session. Returns a session_id that agents use to share state across tool calls. TTL is sliding — refreshed on every read/write.",
+      "description": "Create a new context session. Returns a session_id that agents use to share state across tool calls. TTL is sliding -- refreshed on every read/write.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -69,7 +69,7 @@
     {
       "name": "ctx_list",
       "title": "List Context Sessions",
-      "description": "List active context sessions. Admin/debug tool — returns session metadata and a context preview.",
+      "description": "List active context sessions. Admin/debug tool -- returns session metadata and a context preview.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -124,7 +124,7 @@
             "type": "string"
           },
           "updates": {
-            "description": "Key/value pairs to store. Dot-notation keys expand into nested objects: { 'resolved.osName': 'MXAPISR' } → { resolved: { osName: 'MXAPISR' } }",
+            "description": "Key/value pairs to store. Dot-notation keys expand into nested objects: { 'resolved.osName': 'MXAPISR' } -> { resolved: { osName: 'MXAPISR' } }",
             "type": "object",
             "propertyNames": {
               "type": "string"
@@ -247,7 +247,7 @@
     {
       "name": "maximo_appdesigner_edit",
       "title": "App Designer Presentation Edit (delta lifecycle)",
-      "description": "Edit an existing Maximo application's Application Designer presentation (MAXPRESENTATION CLOB on DMMAXAPPS) by DELTA, without ever transporting the full 70KB+ document through the tool channel.\n\nEvery control in a Maximo presentation has a UNIQUE id, so changes are expressed as small anchored fragments. The server holds the full CLOB; you send only the fragment plus an anchor.\n\nLIFECYCLE (set 'action'):\n  init    { app }                 -> opens a session; returns sessionId + existing control ids to anchor to.\n  modify  { sessionId, ops }      -> apply ops. Each op:\n        insert  { op:'insert', anchorId, position:'before'|'after', fragment }\n        replace { op:'replace', targetId, fragment }\n        remove  { op:'remove', targetId }\n      'fragment' is a SINGLE well-formed element (e.g. one <tab>…</tab>). Ops apply in order and abort on the first failure (bad/duplicate/ambiguous id, malformed fragment) without changing anything.\n  preview { sessionId }           -> compact diff: ids added/removed, sizes, well-formedness. Never returns the full CLOB.\n  commit  { sessionId, confirm }  -> stages ONE MAXPRESENTATION 'Change' (matched on maxpresentationid) and commits through the Working Set gates. HUMAN-GATED: needs confirm:true after showing the diff, because a presentation change affects EVERY user of the app.\n  verify  { sessionId }           -> re-reads from Maximo and confirms the persisted document.\n  status  { sessionId } / discard { sessionId } -> housekeeping.\n\nAFTER COMMIT: a full server restart (or presentation-cache rebuild) is required before the change surfaces in the UI — out-of-band DMMAXAPPS writes are not picked up by a runtime cache reload or re-login. Requires write access to DMMAXAPPS (copilot mode).",
+      "description": "Edit an existing Maximo application's Application Designer presentation (MAXPRESENTATION CLOB on DMMAXAPPS) by DELTA, without ever transporting the full 70KB+ document through the tool channel.\n\nEvery control in a Maximo presentation has a UNIQUE id, so changes are expressed as small anchored fragments. The server holds the full CLOB; you send only the fragment plus an anchor.\n\nLIFECYCLE (set 'action'):\n  init    { app }                 -> opens a session; returns sessionId + existing control ids to anchor to.\n  modify  { sessionId, ops }      -> apply ops. Each op:\n        insert  { op:'insert', anchorId, position:'before'|'after', fragment }\n        replace { op:'replace', targetId, fragment }\n        remove  { op:'remove', targetId }\n      'fragment' is a SINGLE well-formed element (e.g. one <tab>...</tab>). Ops apply in order and abort on the first failure (bad/duplicate/ambiguous id, malformed fragment) without changing anything.\n  preview { sessionId }           -> compact diff: ids added/removed, sizes, well-formedness. Never returns the full CLOB.\n  commit  { sessionId, confirm }  -> stages ONE MAXPRESENTATION 'Change' (matched on maxpresentationid) and commits through the Working Set gates. HUMAN-GATED: needs confirm:true after showing the diff, because a presentation change affects EVERY user of the app.\n  verify  { sessionId }           -> re-reads from Maximo and confirms the persisted document.\n  status  { sessionId } / discard { sessionId } -> housekeeping.\n\nAFTER COMMIT: a full server restart (or presentation-cache rebuild) is required before the change surfaces in the UI -- out-of-band DMMAXAPPS writes are not picked up by a runtime cache reload or re-login. Requires write access to DMMAXAPPS (copilot mode).",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -305,7 +305,7 @@
                   "type": "string"
                 },
                 "fragment": {
-                  "description": "insert/replace only: the control fragment XML — a SINGLE well-formed element (e.g. a <tab>…</tab>). Keep it to the changed control, not the whole app.",
+                  "description": "insert/replace only: the control fragment XML -- a SINGLE well-formed element (e.g. a <tab>...</tab>). Keep it to the changed control, not the whole app.",
                   "type": "string"
                 }
               },
@@ -328,7 +328,7 @@
     {
       "name": "maximo_change_status",
       "title": "Execute Status Change",
-      "description": "Executes a status transition on a single Maximo record using its wsmethod status-change action.\n\nREQUIRED WORKFLOW — always call maximo_plan_status_change first:\n  1. Call maximo_plan_status_change, show result to user\n  2. Get explicit user confirmation\n  3. Only then call this tool (pass the plan's detected_action as actionName)\n\nRuntime safety:\n  - Calls getAllowedActions immediately before execution.\n  - Rejects if the action is not in the allowed actions — even if planning succeeded.\n  - Single record only. No bulk/filter transitions.\n\nThe action name is NOT fixed across object structures (e.g. MXAPIWO uses changeWOStatus). This is NOT a field update — it triggers Maximo status-change business rules, escalation logic, and workflow transitions.\n\nElectronic signature: this tool always asks Maximo to enforce whatever SIGOPTION esig requirement is configured for the action (customer-configurable, native Maximo behavior — not detectable in advance).\nNo server-managed Electronic Signature is configured on this deployment. If esig is required and esigAuth was not supplied, the call fails with op_success:false and error.reason 'esig_required'. On that response: ask the user for their own Electronic Signature key (their Maximo password) and a reason, then call this tool again with the same parameters plus esigAuth (base64 of the PASSWORD ONLY — not userid:password, see esigAuth's own description) and esigReason.\n",
+      "description": "Executes a status transition on a single Maximo record using its wsmethod status-change action.\n\nREQUIRED WORKFLOW -- always call maximo_plan_status_change first:\n  1. Call maximo_plan_status_change, show result to user\n  2. Get explicit user confirmation\n  3. Only then call this tool (pass the plan's detected_action as actionName)\n\nRuntime safety:\n  - Calls getAllowedActions immediately before execution.\n  - Rejects if the action is not in the allowed actions -- even if planning succeeded.\n  - Single record only. No bulk/filter transitions.\n\nThe action name is NOT fixed across object structures (e.g. MXAPIWO uses changeWOStatus). This is NOT a field update -- it triggers Maximo status-change business rules, escalation logic, and workflow transitions.\n\nElectronic signature: this tool always asks Maximo to enforce whatever SIGOPTION esig requirement is configured for the action (customer-configurable, native Maximo behavior -- not detectable in advance).\nNo server-managed Electronic Signature is configured on this deployment. If esig is required and esigAuth was not supplied, the call fails with op_success:false and error.reason 'esig_required'. On that response: ask the user for their own Electronic Signature key (their Maximo password) and a reason, then call this tool again with the same parameters plus esigAuth (base64 of the PASSWORD ONLY -- not userid:password, see esigAuth's own description) and esigReason.\n",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -358,7 +358,7 @@
             "type": "string"
           },
           "esigAuth": {
-            "description": "Only needed on a RETRY, after an 'esig_required' response — this server has no service-account Electronic Signature configured, so the end user's own credential is required. base64 of the PASSWORD ONLY for the signing user -- NOT base64('userid:password'). Confirmed live: Maximo validates the signature against the identity behind this connection's own apikey, so including a userid in the encoded value makes it invalid (BMXAA3840E) even with the correct password. This tool always asks Maximo to check for a configured esig requirement (checkesig=1); if one exists and no valid esigAuth is available (neither this field nor the server default), the call fails with op_success:false and error.reason 'esig_required'.",
+            "description": "Only needed on a RETRY, after an 'esig_required' response -- this server has no service-account Electronic Signature configured, so the end user's own credential is required. base64 of the PASSWORD ONLY for the signing user -- NOT base64('userid:password'). Confirmed live: Maximo validates the signature against the identity behind this connection's own apikey, so including a userid in the encoded value makes it invalid (BMXAA3840E) even with the correct password. This tool always asks Maximo to check for a configured esig requirement (checkesig=1); if one exists and no valid esigAuth is available (neither this field nor the server default), the call fails with op_success:false and error.reason 'esig_required'.",
             "type": "string"
           },
           "esigReason": {
@@ -579,7 +579,7 @@
     {
       "name": "maximo_get_metadata",
       "title": "Get Maximo Metadata",
-      "description": "Resolves a maximo:// URI and returns Maximo metadata. Use to discover Object Structures, field names, child relationships, and schemas before building queries.\n\n=== SUPPORTED URIs ===\n  maximo://os/search/{query}                         : find OS by keyword (start here)\n  maximo://os/{osName}                               : the OS summary, incl. queryCapability = its saved queries / KPIs (names for os_query_builder savedQuery)\n  maximo://os/{osName}/schema                        : parent field names for select/where (API-exposed only)\n  maximo://os/{osName}/relatedObjects                : children this OS exposes: objectName (dot-notation prefix in where), relation (child select key), cardinality\n  maximo://os/{osName}/subschemas/{childObjectName}  : child field names, comma-separated for multiple children\n  maximo://os/{osName}/object/{objectName}/attributes/{attrOrCsv} : OS-scoped attribute metadata (maxType, domain, length, required) for one or comma-separated attributes; {objectName} is a name from relatedObjects (or the primary object)\n  maximo://object/{objectName}/relationships/compact : ALL relationships on an object — relationshipName, targetObject, whereClause (the join keys).\n                                                      Use when the relationship you need is NOT in relatedObjects: those names work in a\n                                                      'rel.<relationshipName>{...}' select and in childCollection, and whereClause gives the keys for a cross-OS hop.\n                                                      Add /relationships (no /compact) for remarks, which describe cardinality. Large payload.\n\n=== AVOID (unless instructed) ===\n  maximo://object/{objectName} and .../attributes - raw MBO-level, not OS-scoped, ignores security constraints\n\n=== WORKFLOW ===\n  1. search/{intent} to find OS  2. schema for parent fields  3. relatedObjects for exposed children  4. subschemas/{child} for child fields  5. os_query_builder\n  (relationship not exposed by the OS? object/{primaryObject}/relationships/compact to find the door, then rel. select or childCollection)\n  (optional: os/{osName}/object/{objectName}/attributes/{attr} for attribute types/domains before staging updates)",
+      "description": "Resolves a maximo:// URI and returns Maximo metadata. Use to discover Object Structures, field names, child relationships, and schemas before building queries.\n\n=== SUPPORTED URIs ===\n  maximo://os/search/{query}                         : find OS by keyword (start here)\n  maximo://os/{osName}                               : the OS summary, incl. queryCapability = its saved queries / KPIs (names for os_query_builder savedQuery)\n  maximo://os/{osName}/schema                        : parent field names for select/where (API-exposed only)\n  maximo://os/{osName}/relatedObjects                : children this OS exposes: objectName (dot-notation prefix in where; lowercased, it is the child select block key, e.g. worklog{...}), relation (the relationship name, for rel.<name>{...} and childCollection -- NOT a select key), cardinality\n  maximo://os/{osName}/subschemas/{childObjectName}  : child field names, comma-separated for multiple children\n  maximo://os/{osName}/object/{objectName}/attributes/{attrOrCsv} : OS-scoped attribute metadata (maxType, domain, length, required) for one or comma-separated attributes; {objectName} is a name from relatedObjects (or the primary object)\n  maximo://object/{objectName}/relationships/compact : ALL relationships on an object -- relationshipName, targetObject, whereClause (the join keys).\n                                                      Use when the relationship you need is NOT in relatedObjects: those names work in a\n                                                      'rel.<relationshipName>{...}' select and in childCollection, and whereClause gives the keys for a cross-OS hop.\n                                                      Add /relationships (no /compact) for remarks, which describe cardinality. Large payload.\n\n=== AVOID (unless instructed) ===\n  maximo://object/{objectName} and .../attributes - raw MBO-level, not OS-scoped, ignores security constraints\n\n=== WORKFLOW ===\n  1. search/{intent} to find OS  2. schema for parent fields  3. relatedObjects for exposed children  4. subschemas/{child} for child fields  5. os_query_builder\n  (relationship not exposed by the OS? object/{primaryObject}/relationships/compact to find the door, then rel. select or childCollection)\n  (optional: os/{osName}/object/{objectName}/attributes/{attr} for attribute types/domains before staging updates)",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -589,7 +589,7 @@
             "type": "string"
           },
           "useLean": {
-            "description": "Set true for LEAN-compressed payload (25–50% fewer tokens). Response has ### LEAN FORMAT v1 header; use ### SCHEMA to map short keys, ### DICT to expand *N pointer values. Falls back to standard JSON if compression yields no saving.",
+            "description": "Set true for LEAN-compressed payload (25-50% fewer tokens). Response has ### LEAN FORMAT v1 header; use ### SCHEMA to map short keys, ### DICT to expand *N pointer values. Falls back to standard JSON if compression yields no saving.",
             "default": false,
             "type": "boolean"
           }
@@ -977,7 +977,7 @@
     {
       "name": "maximo_plan_status_change",
       "title": "Plan Status Change",
-      "description": "Validates a proposed status transition for a single Maximo record and returns a preview — without making any changes.\n\nAlways call this tool first, show the result to the user, and only proceed to maximo_change_status after the user confirms.\n\nThe status-change action name is auto-detected from the record's own allowedactions (it is NOT the same across object structures -- e.g. MXAPIWO uses changeWOStatus, not a generic changeStatus). Pass actionName to override the guess.\n\nReturns:\n  - Current status of the record\n  - The detected status-change action name, and whether it is currently allowed\n  - Full list of currently allowed actions on the record\n  - Key record fields for display (wonum / description / siteid etc.)\n\nSafety: single-record only. Use os_query_builder to find the restId first.",
+      "description": "Validates a proposed status transition for a single Maximo record and returns a preview -- without making any changes.\n\nAlways call this tool first, show the result to the user, and only proceed to maximo_change_status after the user confirms.\n\nThe status-change action name is auto-detected from the record's own allowedactions (it is NOT the same across object structures -- e.g. MXAPIWO uses changeWOStatus, not a generic changeStatus). Pass actionName to override the guess.\n\nReturns:\n  - Current status of the record\n  - The detected status-change action name, and whether it is currently allowed\n  - Full list of currently allowed actions on the record\n  - Key record fields for display (wonum / description / siteid etc.)\n\nSafety: single-record only. Use os_query_builder to find the restId first.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -1214,10 +1214,10 @@
     {
       "name": "os_query_builder",
       "title": "OSLC Query Builder",
-      "description": "Builds a validated Maximo OSLC query URL and creates an OS Working Set. This is the only entry point to query Maximo data — always call this after maximo_get_metadata.\n\nFILTERING (see field descriptions for full syntax):\n  where        — PARENT filtering only: which parent records come back.\n                 Dot notation (CHILDOBJECT.ATTR) filters parents by a child attribute.\n  childOptions — filters/sorts CHILD rows for a relationship already reached via `select`.\n                 One hop: just `relationship`. Nested past one hop: also set `path` (the\n                 full chain) or the filter targets the wrong MBO and Maximo drops it.\n  tlrange/tlattribute — PARENT-level timeline filter: date-math range around an index\n                 date (today, or a date given via tlattribute='attr=<ISO date>').\n                 <sign><n><unit>, unit one of D/W/M/Y/h/m/s. e.g. tlrange='-3M',\n                 tlattribute='reportdate' -> reportdate within the last 3 months.\n                 childOptions entries support the same pair, scoped to that relationship.\n  domaininternalwhere — PARENT-level filter by an attribute's INTERNAL synonym-domain\n                 value (e.g. WOSTATUS), not the external display value `where` compares\n                 against. '<attr>=v1,v2' -> SQL IN; '<attr>!=v1,v2' -> SQL NOT IN. Independent\n                 of `where` — ANDed to it server-side, never merged into it. childOptions\n                 entries support the same field, scoped to that relationship.\n  addschema — inlines the JSON schema for this exact query's select (attrs, child\n                 blocks, rel. nesting) alongside the data, in one call. Surfaced by\n                 ws_load as meta.schema. Not carried onto Maximo's own next-page href;\n                 re-set addschema:true on each page's own os_query_builder call.\n  pageno — jump straight to page N (1-based) of a pageSize'd result, e.g. pageno:2.\n                 ws_load's meta.paging (pagenum/totalPages/nextPage/previousPage) reports\n                 which page came back and whether more exist -- totalPages needs\n                 collectioncount:true. Surfaced whenever Maximo returns it, pageno or not.\n  count -- adds count=1: Maximo runs SELECT COUNT(*) and returns ONLY {totalCount:N}, no\n                 records. Cheapest total; use collectioncount:true if you also need rows. Default false.\n  ignorecollectionref -- adds ignorecollectionref=1: drops the *_collectionref child hrefs\n                 from every record (smaller payloads). Default false.\n  op=isnull renders as attr!=STAR, op=isnotnull renders as attr=STAR\n\nRELATED DATA — three ways, in increasing reach. MIND THE NAME: each way wants a\ndifferent token, and the wrong one fails silently (empty, not an error).\n  1. Children already in the OS -> use the child OBJECT NAME, lowercased, as a child block:\n     childSelects {woactivity:[taskid,description]} -> woactivity{taskid,description}.\n     From maximo://os/{osName}/relatedObjects objectName. Its `relation` does NOT work here.\n     Pair with childOptions {relationship: woactivity, where: {...}} to filter it.\n  2. Any relationship, including ones the OS does not expose -> use the RELATIONSHIP NAME\n     in a select string: rel.<relationshipName>{attr,...}. Nests:\n     rel.asset{assetnum,rel.assetmeter{metername}}. Names from\n     maximo://object/{primaryObject}/relationships/compact.\n     Pair with childOptions {relationship, path: [...chain]} to filter a nested hop.\n  3. One parent's child collection as its own query — the simplest single-parent, single-hop\n     filter/sort/page path, and the only way to page or collectioncount child rows:\n     childCollection {parentRecordId, relationship, responseOs}. The path segment accepts\n     EITHER an object name or a relationship name, and the two can resolve to DIFFERENT\n     doors with different rows. Set responseOs to re-render the far side through that OS,\n     which is required for it to expose its own children.\n  All related data is a LIST: 0..N rows, and a 1:1 relationship still arrives as one element.\n  A missing child key means zero rows, never a bad query.\n\nNOT HERE: aggregation -- use maximo_aggregate (group by with count/sum/avg/min/max). Parenthesised and/or nesting is not supported.\n\nWORKFLOW: maximo_get_metadata (search, schema, relatedObjects), then this tool, then ws_* tools",
+      "description": "Builds a validated Maximo OSLC query URL and creates an OS Working Set. This is the only entry point to query Maximo data -- always call this after maximo_get_metadata.\n\nFILTERING (see field descriptions for full syntax):\n  where        -- PARENT filtering only: which parent records come back.\n                 Dot notation (CHILDOBJECT.ATTR) filters parents by a child attribute.\n  childOptions -- filters/sorts CHILD rows for a relationship already reached via `select`.\n                 One hop: just `relationship`. Nested past one hop: also set `path` (the\n                 full chain) or the filter targets the wrong MBO and Maximo drops it.\n  tlrange/tlattribute -- PARENT-level timeline filter: date-math range around an index\n                 date (today, or a date given via tlattribute='attr=<ISO date>').\n                 <sign><n><unit>, unit one of D/W/M/Y/h/m/s. e.g. tlrange='-3M',\n                 tlattribute='reportdate' -> reportdate within the last 3 months.\n                 childOptions entries support the same pair, scoped to that relationship.\n  domaininternalwhere -- PARENT-level filter by an attribute's INTERNAL synonym-domain\n                 value (e.g. WOSTATUS), not the external display value `where` compares\n                 against. '<attr>=v1,v2' -> SQL IN; '<attr>!=v1,v2' -> SQL NOT IN. Independent\n                 of `where` -- ANDed to it server-side, never merged into it. childOptions\n                 entries support the same field, scoped to that relationship.\n  addschema -- inlines the JSON schema for this exact query's select (attrs, child\n                 blocks, rel. nesting) alongside the data, in one call. Surfaced by\n                 ws_load as meta.schema. Not carried onto Maximo's own next-page href;\n                 re-set addschema:true on each page's own os_query_builder call.\n  pageno -- jump straight to page N (1-based) of a pageSize'd result, e.g. pageno:2.\n                 ws_load's meta.paging (pagenum/totalPages/nextPage/previousPage) reports\n                 which page came back and whether more exist -- totalPages needs\n                 collectioncount:true. Surfaced whenever Maximo returns it, pageno or not.\n  count -- adds count=1: Maximo runs SELECT COUNT(*) and returns ONLY {totalCount:N}, no\n                 records. Cheapest total; use collectioncount:true if you also need rows. Default false.\n  ignorecollectionref -- adds ignorecollectionref=1: drops the *_collectionref child hrefs\n                 from every record (smaller payloads). Default false.\n  op=isnull renders as attr!=STAR, op=isnotnull renders as attr=STAR\n\nRELATED DATA -- three ways, in increasing reach. MIND THE NAME: each way wants a\ndifferent token, and the wrong one fails silently (empty, not an error).\n  1. Children already in the OS -> use the child OBJECT NAME, lowercased, as a child block:\n     childSelects {woactivity:[taskid,description]} -> woactivity{taskid,description}.\n     From maximo://os/{osName}/relatedObjects objectName. Its `relation` does NOT work here.\n     Pair with childOptions {relationship: woactivity, where: {...}} to filter it.\n  2. Any relationship, including ones the OS does not expose -> use the RELATIONSHIP NAME\n     in a select string: rel.<relationshipName>{attr,...}. Nests:\n     rel.asset{assetnum,rel.assetmeter{metername}}. Names from\n     maximo://object/{primaryObject}/relationships/compact.\n     Pair with childOptions {relationship, path: [...chain]} to filter a nested hop.\n  3. One parent's child collection as its own query -- the simplest single-parent, single-hop\n     filter/sort/page path, and the only way to page or collectioncount child rows:\n     childCollection {parentRecordId, relationship, responseOs}. The path segment accepts\n     EITHER an object name or a relationship name, and the two can resolve to DIFFERENT\n     doors with different rows. Set responseOs to re-render the far side through that OS,\n     which is required for it to expose its own children.\n  All related data is a LIST: 0..N rows, and a 1:1 relationship still arrives as one element.\n  A missing child key means zero rows, never a bad query.\n\nNOT HERE: aggregation -- use maximo_aggregate (group by with count/sum/avg/min/max). Parenthesised and/or nesting is not supported.\n\nWORKFLOW: maximo_get_metadata (search, schema, relatedObjects), then this tool, then ws_* tools",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Builds a complete OSLC query URL and creates an OS Working Set. WORKFLOW: 1) maximo_get_metadata (search OS, get schema/relatedObjects/subschemas). 2) os_query_builder (build URL, get workingSet ID). 3) ws_load → ws_get_records to read data. 4) ws_set_active → ws_update_field → ws_preview_changes → ws_commit for updates.",
+        "description": "Builds a complete OSLC query URL and creates an OS Working Set. WORKFLOW: 1) maximo_get_metadata (search OS, get schema/relatedObjects/subschemas). 2) os_query_builder (build URL, get workingSet ID). 3) ws_load -> ws_get_records to read data. 4) ws_set_active -> ws_update_field -> ws_preview_changes -> ws_commit for updates.",
         "type": "object",
         "properties": {
           "osName": {
@@ -1229,7 +1229,7 @@
             "type": "string"
           },
           "lean": {
-            "description": "Adds lean=1 for compact responses. Defaults to true — do not change.",
+            "description": "Adds lean=1 for compact responses. Defaults to true -- do not change.",
             "readOnly": true,
             "default": true,
             "type": "boolean"
@@ -1247,7 +1247,7 @@
             "type": "boolean"
           },
           "addschema": {
-            "description": "If true, adds addschema=1: Maximo inlines the JSON schema for this exact query (attributes reached by `select`, including child/rel. nesting) into the response, alongside the data, in the same call — surfaced by ws_load as `meta.schema`. The schema's shape depends on how deep `select` goes; it is passed through as Maximo returns it, not reshaped. Maximo does not carry this flag onto its own next-page href, so a later page needs addschema:true set again on that page's own os_query_builder call to get its schema too.",
+            "description": "If true, adds addschema=1: Maximo inlines the JSON schema for this exact query (attributes reached by `select`, including child/rel. nesting) into the response, alongside the data, in the same call -- surfaced by ws_load as `meta.schema`. The schema's shape depends on how deep `select` goes; it is passed through as Maximo returns it, not reshaped. Maximo does not carry this flag onto its own next-page href, so a later page needs addschema:true set again on that page's own os_query_builder call to get its schema too.",
             "type": "boolean"
           },
           "paging": {
@@ -1286,7 +1286,7 @@
             "type": "string"
           },
           "childSelects": {
-            "description": "Child attributes, for children this object structure already exposes. Key = the OBJECT NAME from maximo://os/{osName}/relatedObjects, lowercased — NOT its `relation`. (WORKLOG is exposed through relation WOWORKLOG, but the select key is 'worklog'; 'woworklog' returns nothing at all.) Value = array of child field names (from maximo://os/{osName}/subschemas/{childName}). Example: {'woactivity': ['taskid','description'], 'worklog': ['description','createdate']}. Returns ALL child rows — it cannot filter them; use childCollection for that. For relationships this OS does not expose, put 'rel.<relationshipName>{...}' in select instead.",
+            "description": "Child attributes, for children this object structure already exposes. Key = the OBJECT NAME from maximo://os/{osName}/relatedObjects, lowercased -- NOT its `relation`. (WORKLOG is exposed through relation WOWORKLOG, but the select key is 'worklog'; 'woworklog' returns nothing at all.) Value = array of child field names (from maximo://os/{osName}/subschemas/{childName}). Example: {'woactivity': ['taskid','description'], 'worklog': ['description','createdate']}. Returns ALL child rows -- it cannot filter them; use childCollection for that. For relationships this OS does not expose, put 'rel.<relationshipName>{...}' in select instead.",
             "type": "object",
             "propertyNames": {
               "type": "string"
@@ -1324,7 +1324,7 @@
             "type": "object",
             "properties": {
               "conditions": {
-                "description": "Array of filter conditions (AND by default, OR if orMode=true). Example: [{field:'siteid',op:'=',value:'BEDFORD'},{field:'status',op:'in',inValues:['WAPPR','WSCH']}]. For NUMERIC/YORN fields always pass value as string — server coerces automatically. For child-based parent filtering use dot notation: field='ASSETSPEC.NUMVALUE'.",
+                "description": "Array of filter conditions (AND by default, OR if orMode=true). Example: [{field:'siteid',op:'=',value:'BEDFORD'},{field:'status',op:'in',inValues:['WAPPR','WSCH']}]. For NUMERIC/YORN fields always pass value as string -- server coerces automatically. For child-based parent filtering use dot notation: field='ASSETSPEC.NUMVALUE'.",
                 "type": "array",
                 "items": {
                   "type": "object",
@@ -1350,7 +1350,7 @@
                       ]
                     },
                     "value": {
-                      "description": "Comparison value as a string. For NUMERIC/INTEGER/FLOAT fields the server coerces automatically. For YORN (boolean) fields pass '1' (true) or '0' (false). Do NOT use for the 'in' operator — use inValues instead.",
+                      "description": "Comparison value as a string. For NUMERIC/INTEGER/FLOAT fields the server coerces automatically. For YORN (boolean) fields pass '1' (true) or '0' (false). Do NOT use for the 'in' operator -- use inValues instead.",
                       "type": "string"
                     },
                     "inValues": {
@@ -1395,7 +1395,7 @@
             "type": "number"
           },
           "childOptions": {
-            "description": "Filter, sort, and limit child rows for relationships already reached via `select` (childSelects or a rel.<name>{...} path). Each entry needs `relationship`; add `path` (the full chain) for anything nested past one top-level hop, or the filter is resolved against the wrong MBO and Maximo silently discards it. The relationship must ALSO appear in `select`/`childSelects` — otherwise there are no rows in the response to filter. A missing `limit` gets a safety default (see `limit`/`noLimit`).",
+            "description": "Filter, sort, and limit child rows for relationships already reached via `select` (childSelects or a rel.<name>{...} path). Each entry needs `relationship`; add `path` (the full chain) for anything nested past one top-level hop, or the filter is resolved against the wrong MBO and Maximo silently discards it. The relationship must ALSO appear in `select`/`childSelects` -- otherwise there are no rows in the response to filter. A missing `limit` gets a safety default (see `limit`/`noLimit`).",
             "type": "array",
             "items": {
               "type": "object",
@@ -1405,7 +1405,7 @@
                   "type": "string"
                 },
                 "path": {
-                  "description": "Full relationship-name chain from the object structure's primary object down to and including `relationship`, e.g. ['MODIFYWORKLOG','PERSON','SMS']. Each name is resolved against the relationships of the MBO that owns THAT hop — which changes at every level and is usually NOT this object structure's primary object. Mirrors the corresponding rel.<name>{rel.<name>{...}} nesting in `select`. Omit for a single top-level hop (equivalent to path:[relationship]).",
+                  "description": "Full relationship-name chain from the object structure's primary object down to and including `relationship`, e.g. ['MODIFYWORKLOG','PERSON','SMS']. Each name is resolved against the relationships of the MBO that owns THAT hop -- which changes at every level and is usually NOT this object structure's primary object. Mirrors the corresponding rel.<name>{rel.<name>{...}} nesting in `select`. Omit for a single top-level hop (equivalent to path:[relationship]).",
                   "type": "array",
                   "items": {
                     "type": "string"
@@ -1442,7 +1442,7 @@
                             ]
                           },
                           "value": {
-                            "description": "Comparison value as a string. For NUMERIC/INTEGER/FLOAT fields the server coerces automatically. For YORN (boolean) fields pass '1' (true) or '0' (false). Do NOT use for the 'in' operator — use inValues instead.",
+                            "description": "Comparison value as a string. For NUMERIC/INTEGER/FLOAT fields the server coerces automatically. For YORN (boolean) fields pass '1' (true) or '0' (false). Do NOT use for the 'in' operator -- use inValues instead.",
                             "type": "string"
                           },
                           "inValues": {
@@ -1462,11 +1462,11 @@
                   "type": "boolean"
                 },
                 "tlrange": {
-                  "description": "Timeline range filter, applied around an index date (today, or the date given in `tlattribute` after '='). Grammar: <sign><n><unit> where sign is '+' (future of the index date), '-' (past), or '+-' (both directions, i.e. index-n .. index+n); n is a positive integer; unit is one of D=days, W=weeks (n*7 days), M=months, Y=years, h=hours, m=minutes, s=seconds (case-sensitive — 'M' is months, 'm' is minutes). Examples: '-3M' = last 3 months, '+3M' = next 3 months, '+-3Y' = 3 years back through 3 years forward, '-7D' = last 7 days, '-24h' = last 24 hours. Requires `tlattribute`. Unrecognized units are rejected the same way Maximo's own TimelineFilterHelper.getDate rejects them server-side (invaliddatetimeunit).",
+                  "description": "Timeline range filter, applied around an index date (today, or the date given in `tlattribute` after '='). Grammar: <sign><n><unit> where sign is '+' (future of the index date), '-' (past), or '+-' (both directions, i.e. index-n .. index+n); n is a positive integer; unit is one of D=days, W=weeks (n*7 days), M=months, Y=years, h=hours, m=minutes, s=seconds (case-sensitive -- 'M' is months, 'm' is minutes). Examples: '-3M' = last 3 months, '+3M' = next 3 months, '+-3Y' = 3 years back through 3 years forward, '-7D' = last 7 days, '-24h' = last 24 hours. Requires `tlattribute`. Unrecognized units are rejected the same way Maximo's own TimelineFilterHelper.getDate rejects them server-side (invaliddatetimeunit).",
                   "type": "string"
                 },
                 "tlattribute": {
-                  "description": "Date/datetime attribute `tlrange` is measured against, e.g. 'reportdate', 'schedstart'. Defaults the index date to now. To index on a specific date instead of now, append '=<ISO-8601 date>' to the attribute name, e.g. 'reportdate=2026-01-01T00:00:00-05:00' — passed through raw to Maximo as-is (not parsed/validated here). Required when `tlrange` is set.",
+                  "description": "Date/datetime attribute `tlrange` is measured against, e.g. 'reportdate', 'schedstart'. Defaults the index date to now. To index on a specific date instead of now, append '=<ISO-8601 date>' to the attribute name, e.g. 'reportdate=2026-01-01T00:00:00-05:00' -- passed through raw to Maximo as-is (not parsed/validated here). Required when `tlrange` is set.",
                   "type": "string"
                 },
                 "searchTerms": {
@@ -1481,7 +1481,7 @@
                   }
                 },
                 "domaininternalwhere": {
-                  "description": "Filter by the INTERNAL value(s) of an attribute bound to a synonym domain (e.g. WOSTATUS) instead of the external display value oslc.where compares against. Grammar: <attrName>[=|!=]internalVal1,internalVal2,... — '=' generates SQL IN, '!=' generates SQL NOT IN; one or more comma-delimited internal values, no null. Example: 'status=APPR,INPRG' matches internal APPR or INPRG; 'status!=APPR,INPRG' excludes them. Independent of `where`/`rawWhere` — Maximo ANDs it to oslc.where server-side, it is not merged into that clause. Rendered as <pmbo>.<rel>.domaininternalwhere=<value>.",
+                  "description": "Filter by the INTERNAL value(s) of an attribute bound to a synonym domain (e.g. WOSTATUS) instead of the external display value oslc.where compares against. Grammar: <attrName>[=|!=]internalVal1,internalVal2,... -- '=' generates SQL IN, '!=' generates SQL NOT IN; one or more comma-delimited internal values, no null. Example: 'status=APPR,INPRG' matches internal APPR or INPRG; 'status!=APPR,INPRG' excludes them. Independent of `where`/`rawWhere` -- Maximo ANDs it to oslc.where server-side, it is not merged into that clause. Rendered as <pmbo>.<rel>.domaininternalwhere=<value>.",
                   "type": "string"
                 },
                 "orderBy": {
@@ -1502,7 +1502,7 @@
                   "type": "number"
                 },
                 "noLimit": {
-                  "description": "Explicitly disable the automatic safety limit applied to relationship traversals that omit `limit`. Use with caution — an unbounded nested fetch can exhaust the Maximo JVM.",
+                  "description": "Explicitly disable the automatic safety limit applied to relationship traversals that omit `limit`. Use with caution -- an unbounded nested fetch can exhaust the Maximo JVM.",
                   "type": "boolean"
                 }
               },
@@ -1512,7 +1512,7 @@
             }
           },
           "childCollection": {
-            "description": "Query ONE parent record's child collection directly — the simplest way to filter/sort/page child rows for a SINGLE parent, and the only way to page or collectioncount child rows. For filtering/sorting nested relationships across every returned parent record in one request, use childOptions (with `path` for anything nested past one hop) instead. The top-level select/where/orderBy/pageSize/collectioncount then apply to the CHILD rows. Set parentRecordId to the parent's rest id or href, and relationship to the child segment (a child object name from relatedObjects, or any relationship name — both are accepted and may resolve to DIFFERENT doors). Set responseOs to reach a related object that this OS does not expose (e.g. work order -> asset): it renders the far side through that OS, exposing its full attribute set and its own children.",
+            "description": "Query ONE parent record's child collection directly -- the simplest way to filter/sort/page child rows for a SINGLE parent, and the only way to page or collectioncount child rows. For filtering/sorting nested relationships across every returned parent record in one request, use childOptions (with `path` for anything nested past one hop) instead. The top-level select/where/orderBy/pageSize/collectioncount then apply to the CHILD rows. Set parentRecordId to the parent's rest id or href, and relationship to the child segment (a child object name from relatedObjects, or any relationship name -- both are accepted and may resolve to DIFFERENT doors). Set responseOs to reach a related object that this OS does not expose (e.g. work order -> asset): it renders the far side through that OS, exposing its full attribute set and its own children.",
             "type": "object",
             "properties": {
               "parentRecordId": {
@@ -1559,15 +1559,15 @@
             }
           },
           "tlrange": {
-            "description": "Timeline range filter, applied around an index date (today, or the date given in `tlattribute` after '='). Grammar: <sign><n><unit> where sign is '+' (future of the index date), '-' (past), or '+-' (both directions, i.e. index-n .. index+n); n is a positive integer; unit is one of D=days, W=weeks (n*7 days), M=months, Y=years, h=hours, m=minutes, s=seconds (case-sensitive — 'M' is months, 'm' is minutes). Examples: '-3M' = last 3 months, '+3M' = next 3 months, '+-3Y' = 3 years back through 3 years forward, '-7D' = last 7 days, '-24h' = last 24 hours. Requires `tlattribute`. Unrecognized units are rejected the same way Maximo's own TimelineFilterHelper.getDate rejects them server-side (invaliddatetimeunit).",
+            "description": "Timeline range filter, applied around an index date (today, or the date given in `tlattribute` after '='). Grammar: <sign><n><unit> where sign is '+' (future of the index date), '-' (past), or '+-' (both directions, i.e. index-n .. index+n); n is a positive integer; unit is one of D=days, W=weeks (n*7 days), M=months, Y=years, h=hours, m=minutes, s=seconds (case-sensitive -- 'M' is months, 'm' is minutes). Examples: '-3M' = last 3 months, '+3M' = next 3 months, '+-3Y' = 3 years back through 3 years forward, '-7D' = last 7 days, '-24h' = last 24 hours. Requires `tlattribute`. Unrecognized units are rejected the same way Maximo's own TimelineFilterHelper.getDate rejects them server-side (invaliddatetimeunit).",
             "type": "string"
           },
           "tlattribute": {
-            "description": "Date/datetime attribute `tlrange` is measured against, e.g. 'reportdate', 'schedstart'. Defaults the index date to now. To index on a specific date instead of now, append '=<ISO-8601 date>' to the attribute name, e.g. 'reportdate=2026-01-01T00:00:00-05:00' — passed through raw to Maximo as-is (not parsed/validated here). Required when `tlrange` is set.",
+            "description": "Date/datetime attribute `tlrange` is measured against, e.g. 'reportdate', 'schedstart'. Defaults the index date to now. To index on a specific date instead of now, append '=<ISO-8601 date>' to the attribute name, e.g. 'reportdate=2026-01-01T00:00:00-05:00' -- passed through raw to Maximo as-is (not parsed/validated here). Required when `tlrange` is set.",
             "type": "string"
           },
           "domaininternalwhere": {
-            "description": "Filter by the INTERNAL value(s) of an attribute bound to a synonym domain (e.g. WOSTATUS) instead of the external display value oslc.where compares against. Grammar: <attrName>[=|!=]internalVal1,internalVal2,... — '=' generates SQL IN, '!=' generates SQL NOT IN; one or more comma-delimited internal values, no null. Example: 'status=APPR,INPRG' matches internal APPR or INPRG; 'status!=APPR,INPRG' excludes them. Independent of `where`/`rawWhere` — Maximo ANDs it to oslc.where server-side, it is not merged into that clause. Rendered as domaininternalwhere=<value>.",
+            "description": "Filter by the INTERNAL value(s) of an attribute bound to a synonym domain (e.g. WOSTATUS) instead of the external display value oslc.where compares against. Grammar: <attrName>[=|!=]internalVal1,internalVal2,... -- '=' generates SQL IN, '!=' generates SQL NOT IN; one or more comma-delimited internal values, no null. Example: 'status=APPR,INPRG' matches internal APPR or INPRG; 'status!=APPR,INPRG' excludes them. Independent of `where`/`rawWhere` -- Maximo ANDs it to oslc.where server-side, it is not merged into that clause. Rendered as domaininternalwhere=<value>.",
             "type": "string"
           }
         },
@@ -1657,7 +1657,7 @@
             "type": "string"
           },
           "record": {
-            "description": "The new child row's fields as fieldName → string value pairs. Pass scalar values as strings; for YORN (boolean) use '1' or '0'. REQUIRED.",
+            "description": "The new child row's fields as fieldName -> string value pairs. Pass scalar values as strings; for YORN (boolean) use '1' or '0'. REQUIRED.",
             "type": "object",
             "propertyNames": {
               "type": "string"
@@ -1678,10 +1678,10 @@
     {
       "name": "ws_batch_update",
       "title": "Batch Update",
-      "description": "Apply updates across many records using filter/updater.",
+      "description": "Stage one field update on many loaded records of a working set: spec.field = spec.value on every row that matches spec.filter. Omitting filter updates ALL loaded rows. Supported filter grammar: one condition, <attribute> == \"<value>\" (double or single quotes, or an unquoted value with no spaces that does not start with =, <, > or !), e.g. status == \"WAPPR\". The attribute is matched case-insensitively against the record keys and must be on at least one loaded record; the value must match exactly (case-sensitive, compared as a string; a null attribute compares as \"\"). No AND/OR, !=, <, > or functions. Omit filter to update every loaded row. A filter outside that grammar is refused (batch_filter_unsupported), and so is a filter attribute no loaded record carries (batch_filter_unknown_attribute). spec.field is matched case-insensitively against the object-structure schema (the loaded records when no schema is available; batch_update_unknown_field otherwise). Refused, staging nothing: system keys such as href, _rowstamp or *_collectionref (field_not_updatable), status (use_change_status -- use maximo_plan_status_change then maximo_change_status), and child collections (batch_update_relation_field -- use ws_add_child_record / ws_remove_child_record). Primary-key attributes from the schema (e.g. wonum, siteid) are refused too (batch_update_key_field): one key value on many rows is never valid. The value is converted to the attribute's type (numbers: plain decimals; YORN: true/false/1/0; batch_update_invalid_value otherwise). spec.value is required (batch_update_missing_value). Any refusal stages nothing. Rows that already hold the value are left alone: the result reports matched, staged and unchanged. Changes are staged only -- review with ws_preview_changes, then ws_commit.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Apply batch updates across multiple records. Strict mode: spec.value is always a string (server coerces types).",
+        "description": "Stage one field update across many loaded records, optionally narrowed by a single-condition filter. Strict mode: spec.value is always a string (server coerces types).",
         "type": "object",
         "properties": {
           "id": {
@@ -1689,23 +1689,19 @@
             "type": "string"
           },
           "spec": {
-            "description": "Batch update specification. Provide at least one of: filter+field+value, or updater.",
+            "description": "Batch update specification: field + value, plus an optional filter.",
             "type": "object",
             "properties": {
               "filter": {
-                "description": "Filter expression to select records. Example: 'STATUS == \"BROKEN\"'. OPTIONAL.",
+                "description": "Which loaded rows to update: ONE condition, <attribute> == \"<value>\", e.g. 'status == \"WAPPR\"'. Attribute matched case-insensitively and must be on at least one loaded record (batch_filter_unknown_attribute); value matched exactly. No AND/OR, !=, <, >. Anything else is refused (batch_filter_unsupported) and nothing is staged. OPTIONAL -- omit to update ALL loaded rows.",
                 "type": "string"
               },
               "field": {
-                "description": "Attribute name for a simple single-field batch update. OPTIONAL.",
+                "description": "Attribute to set on every matching row, e.g. 'wopriority'. Matched case-insensitively against the object-structure schema (the loaded records when there is no schema; batch_update_unknown_field otherwise). Not a system key (field_not_updatable), not status (use_change_status), not a child collection (batch_update_relation_field), not a primary key such as wonum (batch_update_key_field). Required -- without it nothing is staged (batch_update_missing_diff).",
                 "type": "string"
               },
               "value": {
-                "description": "New value as a string. Required if field is provided. For YORN (boolean) use '1' or '0'.",
-                "type": "string"
-              },
-              "updater": {
-                "description": "Natural language description of the transformation. OPTIONAL.",
+                "description": "New value as a string, assigned to `field` on every matching row; converted to the attribute type (\"\" clears a number or YORN). Required (batch_update_missing_value). For YORN (boolean) use '1' or '0'.",
                 "type": "string"
               }
             }
@@ -1720,10 +1716,10 @@
     {
       "name": "ws_commit",
       "title": "Commit WorkingSet",
-      "description": "Plan + execute staged changes to Maximo. Validation warnings are surfaced during ws_preview_changes and do not block commit. Slow object structures such as DMMAXOBJECTCFG return { async: true, asyncId } straight away — the commit is still running in Maximo, so poll ws_commit_status until it reports 'succeeded' or 'failed'.",
+      "description": "Plan + execute staged changes to Maximo. Validation warnings are surfaced during ws_preview_changes and do not block commit. Slow object structures such as DMMAXOBJECTCFG return { async: true, asyncId } straight away -- the commit is still running in Maximo, so poll ws_commit_status until it reports 'succeeded' or 'failed'.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Validate, plan, and execute all staged changes (creates, updates, deletes) to Maximo. Always call ws_preview_changes first so the user can review what will be sent. Slow object structures (DMMAXOBJECTCFG) return { async: true, asyncId } immediately — poll ws_commit_status until the status is 'succeeded' or 'failed'.",
+        "description": "Validate, plan, and execute all staged changes (creates, updates, deletes) to Maximo. Always call ws_preview_changes first so the user can review what will be sent. Slow object structures (DMMAXOBJECTCFG) return { async: true, asyncId } immediately -- poll ws_commit_status until the status is 'succeeded' or 'failed'.",
         "type": "object",
         "properties": {
           "id": {
@@ -1747,7 +1743,7 @@
             "type": "boolean"
           },
           "forceSync": {
-            "description": "Run inline even for object structures that default to async (e.g. DMMAXOBJECTCFG). The call may exceed the MCP client timeout — use only for testing.",
+            "description": "Run inline even for object structures that default to async (e.g. DMMAXOBJECTCFG). The call may exceed the MCP client timeout -- use only for testing.",
             "type": "boolean"
           }
         },
@@ -1766,7 +1762,7 @@
         "type": "object",
         "properties": {
           "asyncId": {
-            "description": "The asyncId returned by an async ws_commit. PREFERRED — it identifies one specific commit.",
+            "description": "The asyncId returned by an async ws_commit. PREFERRED -- it identifies one specific commit.",
             "type": "string"
           },
           "id": {
@@ -1806,7 +1802,7 @@
       "description": "Discard changes and reset working set.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Discard all staged changes and restore the WorkingSet to its original loaded state. Equivalent to an undo — does not affect Maximo.",
+        "description": "Discard all staged changes and restore the WorkingSet to its original loaded state. Equivalent to an undo -- does not affect Maximo.",
         "type": "object",
         "properties": {
           "id": {
@@ -1874,7 +1870,7 @@
             "type": "string"
           },
           "attachmentRef": {
-            "description": "Identifier for the attachment — either the describedBy.identifier value or the attachment href. REQUIRED.",
+            "description": "Identifier for the attachment -- either the describedBy.identifier value or the attachment href. REQUIRED.",
             "type": "string"
           }
         },
@@ -1898,7 +1894,7 @@
             "type": "string"
           },
           "useLean": {
-            "description": "Set true for LEAN-compressed payload (40–60% fewer tokens). Response has ### LEAN FORMAT v1 header; use ### SCHEMA to map short keys, ### DICT to expand *N pointer values. href and ISO dates are always raw. Falls back to JSON if compression yields no saving.",
+            "description": "Set true for LEAN-compressed payload (40-60% fewer tokens). Response has ### LEAN FORMAT v1 header; use ### SCHEMA to map short keys, ### DICT to expand *N pointer values. href and ISO dates are always raw. Falls back to JSON if compression yields no saving.",
             "default": false,
             "type": "boolean"
           }
@@ -1962,7 +1958,7 @@
             "type": "string"
           },
           "useLean": {
-            "description": "Set true for LEAN-compressed payload (40–60% fewer tokens). Response has ### LEAN FORMAT v1 header; use ### SCHEMA to map short keys, ### DICT to expand *N pointer values. href and ISO dates are always raw. Falls back to JSON if compression yields no saving.",
+            "description": "Set true for LEAN-compressed payload (40-60% fewer tokens). Response has ### LEAN FORMAT v1 header; use ### SCHEMA to map short keys, ### DICT to expand *N pointer values. href and ISO dates are always raw. Falls back to JSON if compression yields no saving.",
             "default": false,
             "type": "boolean"
           }
@@ -1975,7 +1971,7 @@
     {
       "name": "ws_multi_update",
       "title": "Multi Update",
-      "description": "Update multiple fields across records.",
+      "description": "Update multiple fields across records. Each field passes the same checks as ws_update_field (field_not_updatable, use_change_status, relation_field, unknown_field); if any is refused, op_success is false (some_updates_refused) and result[] says which, while the others stay staged.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "description": "Update multiple fields across one or many records in a single call. Strict mode: use stringFields for text/date/boolean, numericFields for numbers.",
@@ -1997,7 +1993,7 @@
                   "type": "string"
                 },
                 "stringFields": {
-                  "description": "Map of fieldName → string value. For ALN, UPPER, LOWER, DATE, DATETIME fields and YORN booleans (use '1' or '0'). Provide stringFields, numericFields, or both.",
+                  "description": "Map of fieldName -> string value. For ALN, UPPER, LOWER, DATE, DATETIME fields and YORN booleans (use '1' or '0'). Provide stringFields, numericFields, or both.",
                   "type": "object",
                   "propertyNames": {
                     "type": "string"
@@ -2007,7 +2003,7 @@
                   }
                 },
                 "numericFields": {
-                  "description": "Map of fieldName → numeric value. For NUMERIC, INTEGER, FLOAT, DECIMAL, DURATION fields. Provide numericFields, stringFields, or both.",
+                  "description": "Map of fieldName -> numeric value. For NUMERIC, INTEGER, FLOAT, DECIMAL, DURATION fields. Provide numericFields, stringFields, or both.",
                   "type": "object",
                   "propertyNames": {
                     "type": "string"
@@ -2042,7 +2038,7 @@
             "type": "string"
           },
           "useLean": {
-            "description": "Set true for LEAN-compressed payload (40–60% fewer tokens). Response has ### LEAN FORMAT v1 header; use ### SCHEMA to map short keys, ### DICT to expand *N pointer values. href and ISO dates are always raw. Falls back to JSON if compression yields no saving.",
+            "description": "Set true for LEAN-compressed payload (40-60% fewer tokens). Response has ### LEAN FORMAT v1 header; use ### SCHEMA to map short keys, ### DICT to expand *N pointer values. href and ISO dates are always raw. Falls back to JSON if compression yields no saving.",
             "default": false,
             "type": "boolean"
           }
@@ -2055,14 +2051,14 @@
     {
       "name": "ws_preview_changes",
       "title": "Preview Working Set Changes",
-      "description": "Returns all staged create, update and delete operations for a given working set before commit. Also runs a non-blocking validation pass — any domain, readonly, or type warnings are returned in 'validation_warnings' with a 'validation_note'. Warnings do not block commit; inform the user and let them decide whether to adjust values or proceed.",
+      "description": "Returns all staged create, update and delete operations for a given working set before commit. Also runs a non-blocking validation pass -- any domain, readonly, or type warnings are returned in 'validation_warnings' with a 'validation_note'. Warnings do not block commit; inform the user and let them decide whether to adjust values or proceed.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "description": "Identifies a WorkingSet session by its unique ID.",
         "type": "object",
         "properties": {
           "id": {
-            "description": "WorkingSet ID returned by os_query_builder. Every ws_* tool requires this ID — obtain it from the workingSet field of the os_query_builder response. REQUIRED.",
+            "description": "WorkingSet ID returned by os_query_builder. Every ws_* tool requires this ID -- obtain it from the workingSet field of the os_query_builder response. REQUIRED.",
             "type": "string",
             "minLength": 1
           }
@@ -2085,7 +2081,7 @@
             "type": "string"
           },
           "useLean": {
-            "description": "Set true for LEAN-compressed payload (40–60% fewer tokens). Response has ### LEAN FORMAT v1 header; use ### SCHEMA to map short keys, ### DICT to expand *N pointer values. href and ISO dates are always raw. Falls back to JSON if compression yields no saving.",
+            "description": "Set true for LEAN-compressed payload (40-60% fewer tokens). Response has ### LEAN FORMAT v1 header; use ### SCHEMA to map short keys, ### DICT to expand *N pointer values. href and ISO dates are always raw. Falls back to JSON if compression yields no saving.",
             "default": false,
             "type": "boolean"
           }
@@ -2136,7 +2132,7 @@
             "type": "string"
           },
           "keyValues": {
-            "description": "Natural-key field → string value pairs identifying the child row to remove. Provide keyValues OR index — not both.",
+            "description": "Natural-key field -> string value pairs identifying the child row to remove. Provide keyValues OR index -- not both.",
             "type": "object",
             "propertyNames": {
               "type": "string"
@@ -2146,7 +2142,7 @@
             }
           },
           "index": {
-            "description": "0-based index of the child row to remove. Provide index OR keyValues — not both.",
+            "description": "0-based index of the child row to remove. Provide index OR keyValues -- not both.",
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
@@ -2173,7 +2169,7 @@
             "type": "string"
           },
           "restID": {
-            "description": "Identifies the record to activate. Three forms accepted:\n  '0', '1', '2' … — 0-based index in the working-set list (preferred after ws_load).\n  '_tempId' (e.g. 'tmp-abc123') — ID of a newly staged draft record.\n  Maximo restId or full href string.\nUse the index form whenever you have just called ws_load or ws_get_records. REQUIRED.",
+            "description": "Identifies the record to activate. Three forms accepted:\n  '0', '1', '2' ... -- 0-based index in the working-set list (preferred after ws_load).\n  '_tempId' (e.g. 'tmp-abc123') -- ID of a newly staged draft record.\n  Maximo restId or full href string.\nUse the index form whenever you have just called ws_load or ws_get_records. REQUIRED.",
             "type": "string"
           }
         },
@@ -2186,10 +2182,10 @@
     {
       "name": "ws_update_draft",
       "title": "Update Draft Record",
-      "description": "Populate a draft record previously created by ws_init_new_record. This does NOT create a new record — it merges the supplied fields into the draft identified by temp_id. Child relationship arrays are fully supported. Workflow: ws_init_new_record → ws_update_draft → ws_preview_changes → ws_commit.",
+      "description": "Populate a draft record previously created by ws_init_new_record. This does NOT create a new record -- it merges the supplied fields into the draft identified by temp_id. Child relationship arrays are fully supported. Workflow: ws_init_new_record -> ws_update_draft -> ws_preview_changes -> ws_commit.",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Populate a draft record created by ws_init_new_record. This does NOT create a new record — it merges fields into the existing draft identified by temp_id. Workflow: ws_init_new_record → ws_update_draft → ws_preview_changes → ws_commit.",
+        "description": "Populate a draft record created by ws_init_new_record. This does NOT create a new record -- it merges fields into the existing draft identified by temp_id. Workflow: ws_init_new_record -> ws_update_draft -> ws_preview_changes -> ws_commit.",
         "type": "object",
         "properties": {
           "id": {
@@ -2201,7 +2197,7 @@
             "type": "string"
           },
           "record": {
-            "description": "Dictionary of fieldName → value pairs to merge into the draft record. Child relationship arrays are supported (e.g. { workorderspec: [{ assetattrid: 'X', alnvalue: 'Y' }] }). Do NOT include _tempId here — pass it as the top-level temp_id field.",
+            "description": "Dictionary of fieldName -> value pairs to merge into the draft record. Child relationship arrays are supported (e.g. { workorderspec: [{ assetattrid: 'X', alnvalue: 'Y' }] }). Do NOT include _tempId here -- pass it as the top-level temp_id field.",
             "type": "object",
             "propertyNames": {
               "type": "string"
@@ -2219,10 +2215,10 @@
     {
       "name": "ws_update_field",
       "title": "Update Field",
-      "description": "Update a single attribute on a single record.",
+      "description": "Update a single attribute on a single record. The name is matched case-insensitively. Refused, staging nothing: system keys such as href, _rowstamp or *_collectionref (field_not_updatable), status (use_change_status -- use maximo_plan_status_change then maximo_change_status), a plain value onto a child collection (relation_field -- use ws_add_child_record / ws_remove_child_record), and a name that is not an attribute of the object structure (unknown_field).",
       "inputSchema": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "description": "Update a single field on a specific record. Provide id, restID, field, and exactly one of stringValue or numericValue. Workflow: os_query_builder → ws_load → ws_set_active → ws_update_field → ws_preview_changes → ws_commit.",
+        "description": "Update a single field on a specific record. Provide id, restID, field, and exactly one of stringValue or numericValue. Workflow: os_query_builder -> ws_load -> ws_set_active -> ws_update_field -> ws_preview_changes -> ws_commit.",
         "type": "object",
         "properties": {
           "id": {
@@ -2238,11 +2234,11 @@
             "type": "string"
           },
           "stringValue": {
-            "description": "New value as a string. Use for ALN, UPPER, LOWER, DATE, DATETIME fields and for YORN booleans (pass '1' for true, '0' for false). Provide either stringValue OR numericValue — not both.",
+            "description": "New value as a string. Use for ALN, UPPER, LOWER, DATE, DATETIME fields and for YORN booleans (pass '1' for true, '0' for false). Provide either stringValue OR numericValue -- not both.",
             "type": "string"
           },
           "numericValue": {
-            "description": "New value as a number. Use for NUMERIC, INTEGER, FLOAT, DECIMAL, DURATION fields. Provide either numericValue OR stringValue — not both.",
+            "description": "New value as a number. Use for NUMERIC, INTEGER, FLOAT, DECIMAL, DURATION fields. Provide either numericValue OR stringValue -- not both.",
             "type": "number"
           }
         },

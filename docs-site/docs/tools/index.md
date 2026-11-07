@@ -40,7 +40,7 @@ Advanced: Use `rawWhere` and `rawSelect` to pass raw OSLC strings when the struc
 
 This is the official path to create a Working Set.
 
-## Working Set — read & load
+## Working Set -- read & load
 
 | Tool | What it does |
 | --- | --- |
@@ -49,30 +49,34 @@ This is the official path to create a Working Set.
 | `ws_previous_page` | Loads the previous page of the same query |
 | `ws_get_records` | Returns already-loaded records from memory (`useLean` supported) |
 | `ws_get_active` | Returns the current active record |
-| `ws_set_active` | Sets the active record — by index, `_tempId`, restId, or href |
+| `ws_set_active` | Sets the active record -- by index, `_tempId`, restId, or href |
 | `ws_get_allowed_actions` | Allowed actions for **every** record the Working Set's query matches, in one call |
 
-## Working Set — stage changes
+## Working Set -- stage changes
 
 | Tool | What it does |
 | --- | --- |
 | `ws_update_field` | Stage one field update on one record |
 | `ws_multi_update` | Stage multiple field updates across records |
-| `ws_batch_update` | Stage updates via a filter/diff spec |
+| `ws_batch_update` | Stage one field on many loaded rows; optional single `attr == "value"` filter (anything else is refused, no filter = all rows) |
 | `ws_init_new_record` | Create a schema-based draft for a new record (create flow) |
 | `ws_update_draft` | Merge fields into a draft from `ws_init_new_record` (child arrays supported) |
-| `ws_add_child_record` | Append one child row to a relation-typed array — no full-array resubmit |
+| `ws_add_child_record` | Append one child row to a relation-typed array -- no full-array resubmit |
 | `ws_remove_child_record` | Remove one child row by natural-key values or index |
 | `ws_delete_record` | Stage a record delete |
 
-→ Child tooling is explained in [Child Records](/concepts/child-records).
+The three field-update tools (`ws_update_field`, `ws_multi_update`, `ws_batch_update`) refuse `status`
+(use `maximo_plan_status_change` -> `maximo_change_status`), system keys such as `href` or `_rowstamp`,
+and a plain value onto a child collection. New records (`ws_init_new_record` / `ws_update_draft`) may set them.
 
-## Working Set — review & finalize
+-> Child tooling is explained in [Child Records](/concepts/child-records).
+
+## Working Set -- review & finalize
 
 | Tool | What it does |
 | --- | --- |
 | `ws_preview_changes` | Staged diff + non-blocking `validation_warnings` |
-| `ws_commit` | Plan and apply staged changes to Maximo — [async for slow object structures](/guide/async-commit) |
+| `ws_commit` | Plan and apply staged changes to Maximo -- [async for slow object structures](/guide/async-commit) |
 | `ws_commit_status` | Poll a background commit by `asyncId` (or Working Set id) |
 | `ws_discard` | Drop staged changes, keep loaded records |
 | `ws_remove` | Remove the Working Set from memory (session cleanup) |
@@ -85,7 +89,7 @@ so you send only an anchored fragment; the server holds the full CLOB.
 
 | Tool | What it does |
 | --- | --- |
-| `maximo_appdesigner_edit` | Delta edit lifecycle via one `action`: `init` (open a session for an app) → `modify` (insert/replace/remove a control fragment anchored on a unique id) → `preview` (compact diff, never the full CLOB) → `commit` (stage one `MAXPRESENTATION` Change + commit through the Working Set gates; needs `confirm:true`) → `verify` (re-read and confirm). A full server restart is still required before the change surfaces in the UI. |
+| `maximo_appdesigner_edit` | Delta edit lifecycle via one `action`: `init` (open a session for an app) -> `modify` (insert/replace/remove a control fragment anchored on a unique id) -> `preview` (compact diff, never the full CLOB) -> `commit` (stage one `MAXPRESENTATION` Change + commit through the Working Set gates; needs `confirm:true`) -> `verify` (re-read and confirm). A full server restart is still required before the change surfaces in the UI. |
 
 ## Attachments
 
@@ -160,7 +164,10 @@ When routing reaches an INPUT node, Maximo keeps the choice in an interactive lo
 
 ## Context session store
 
-Lightweight key-value state scoped to a conversation — no round-trip to Maximo.
+Lightweight key-value state scoped to a conversation -- no round-trip to Maximo.
+
+The `ctx_*` tools are not registered under `--readonly`, and `ctx_list` is withheld while
+`--caller-apikey` (`MCP_CALLER_APIKEY`) is on, so one caller cannot list another caller's sessions.
 
 | Tool | What it does |
 | --- | --- |

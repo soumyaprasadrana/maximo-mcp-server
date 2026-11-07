@@ -1,6 +1,6 @@
 # Introduction
 
-**Maximo MCP Server** is an enterprise [Model Context Protocol](https://modelcontextprotocol.io) server for **IBM Maximo Application Suite**. It gives AI agents a *governed* interaction layer over Maximo — one that understands Maximo metadata, builds valid queries, and never writes to Maximo without an explicit, reviewable commit.
+**Maximo MCP Server** is an enterprise [Model Context Protocol](https://modelcontextprotocol.io) server for **IBM Maximo Application Suite**. It gives AI agents a *governed* interaction layer over Maximo -- one that understands Maximo metadata, builds valid queries, and never writes to Maximo without an explicit, reviewable commit.
 
 It is published on npm as [`@soumyaprasadrana/maximo-mcp-server`](https://www.npmjs.com/package/@soumyaprasadrana/maximo-mcp-server).
 
@@ -8,7 +8,7 @@ It is published on npm as [`@soumyaprasadrana/maximo-mcp-server`](https://www.np
 
 Letting an agent hit Maximo's OSLC REST API directly is risky and inefficient:
 
-- It doesn't know which Object Structures exist, which fields are queryable, or how children relate to parents — so it guesses.
+- It doesn't know which Object Structures exist, which fields are queryable, or how children relate to parents -- so it guesses.
 - A single wrong PATCH can overwrite or delete data with no preview step.
 - Large result sets burn tokens.
 
@@ -16,9 +16,9 @@ This server solves those problems with three pillars.
 
 ### 1. Metadata Engine
 
-A local SQLite-backed metadata store, synced from your Maximo instance, with keyword and (optional) vector search. Agents **discover before they act**: search for an Object Structure, read its schema, inspect child relationships and sub-schemas — all before building a query.
+A local SQLite-backed metadata store, synced from your Maximo instance, with keyword and (optional) vector search. Agents **discover before they act**: search for an Object Structure, read its schema, inspect child relationships and sub-schemas -- all before building a query.
 
-→ [Metadata Engine](/concepts/metadata-engine)
+-> [Metadata Engine](/concepts/metadata-engine)
 
 ### 2. Validated Query Building
 
@@ -26,18 +26,18 @@ A local SQLite-backed metadata store, synced from your Maximo instance, with key
 
 ### 3. Working Set transaction model
 
-The Working Set is a **stateful, in-memory transaction**. Reads load records; every mutation is *staged*, not sent. A preview step shows a field-level diff plus non-blocking validation warnings. Only `ws_commit` writes to Maximo — and Maximo remains the final authority on data validity.
+The Working Set is a **stateful, in-memory transaction**. Reads load records; every mutation is *staged*, not sent. A preview step shows a field-level diff plus non-blocking validation warnings. Only `ws_commit` writes to Maximo -- and Maximo remains the final authority on data validity.
 
-→ [Working Set Model](/concepts/working-set)
+-> [Working Set Model](/concepts/working-set)
 
 ## What's in the box
 
 | Capability | Summary |
 | --- | --- |
-| Metadata discovery | `maximo_get_metadata` over `maximo://` URIs — search, schema, related objects, sub-schemas |
-| Query building | `os_query_builder` — validated OSLC, creates the Working Set |
+| Metadata discovery | `maximo_get_metadata` over `maximo://` URIs -- search, schema, related objects, sub-schemas |
+| Query building | `os_query_builder` -- validated OSLC, creates the Working Set |
 | Staged CRUD | Load, update, multi/batch update, create (draft flow), delete, child add/remove |
-| Preview & commit | `ws_preview_changes` (diff + warnings) → `ws_commit` |
+| Preview & commit | `ws_preview_changes` (diff + warnings) -> `ws_commit` |
 | Status changes | Plan, then confirm -- checked against Maximo's valid next statuses and electronic signatures |
 | Workflow | Open assignments with their routes, complete an assignment, start a process (plan, then confirm) |
 | Answers | `maximo_aggregate` (group-by counts and sums), `maximo_lookup_values` (valid values for any field, incl. table domains) |
@@ -58,4 +58,4 @@ The Working Set is a **stateful, in-memory transaction**. Reads load records; ev
 - **Maximo is the source of truth.** Validation warnings are advisory; the server does not block commits on its own opinion.
 - **Least surprise on children.** Child-collection edits are diffed by natural key so untouched rows are never disturbed. See [Child Records](/concepts/child-records).
 
-Ready? → [Installation & Setup](/guide/getting-started)
+Ready? -> [Installation & Setup](/guide/getting-started)

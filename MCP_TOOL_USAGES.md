@@ -124,6 +124,15 @@ HTTP 204 "No content" from an action or status call is success: nothing to read 
 | `ws_not_found` / `workingset_not_found`                                                                             | The working set expired, or (per-user servers) belongs to another user | Rebuild with `os_query_builder`. If it held staged, uncommitted changes, tell the user they were lost, re-stage and preview again |
 | `permission_denied`                                                                                                 | The API user lacks rights                                 | Report it; do not retry or route around it                                   |
 | `no_active_record`                                                                                                  | `restID:"active"` used with nothing active                | `ws_set_active` first                                                        |
+| `batch_filter_unsupported` | `ws_batch_update` got a filter outside `attr == "value"`; nothing was staged | Rewrite as one `attr == "value"` condition, or stage per record with `ws_multi_update` (4.5) |
+| `batch_filter_unknown_attribute` / `batch_update_unknown_field` | The filter attribute is on no loaded record / the field is not in the object-structure schema (the loaded records when there is no schema); nothing was staged | Check the name (`maximo://os/{osName}/schema`); select the filter attribute in `os_query_builder` and reload |
+| `batch_update_missing_value` / `batch_update_invalid_value` | `ws_batch_update` had no `value`, or one that cannot become the attribute's type; nothing was staged | Send a valid `value` (a plain decimal for numeric fields; `true`/`false`/`1`/`0` for YORN) |
+| `unknown_field` | `ws_update_field` / `ws_multi_update` got a name that is not an attribute of the object structure; nothing was staged | Check the name (`maximo://os/{osName}/schema`) |
+| `field_not_updatable` | A system or identity key (`href`, `localref`, `_rowstamp`, `_id`, `*_collectionref`, the unique id) was sent to `ws_update_field` / `ws_multi_update` / `ws_batch_update`; nothing was staged | Drop it: these are not attributes |
+| `use_change_status` | `status` was sent to a field-update tool; nothing was staged | `maximo_plan_status_change` then `maximo_change_status` (4.8, R14) |
+| `relation_field` / `batch_update_relation_field` | A plain value was sent to a child collection (e.g. `worklog`); nothing was staged | `ws_add_child_record` / `ws_remove_child_record` (4.6) |
+| `batch_update_key_field` | `ws_batch_update` was asked to set a primary-key attribute (e.g. `wonum`, `siteid`) on many rows; nothing was staged | Do not batch key changes; change one record with `ws_update_field` if really needed (Maximo decides) |
+| `some_updates_refused` | `ws_multi_update`: some fields were refused, the rest are staged | Read `result[].error`; fix or drop those fields, then preview |
 | `needs_confirmation`                                                                                                | `ws_commit` was asked to confirm                          | Show the staged changes; recommit with `confirmed:true` after yes            |
 | `commit_failed` / `commit_partial_failure` / `commit_aborted`                                                       | Maximo rejected the commit (or part of it)                | Quote each `error.maximo_errors[].reasonCode` + `message`; fix; build a fresh working set (R10). If `error.outcome` is `unknown`, do NOT retry -- verify in Maximo first |
 | `locked`                                                                                                            | A commit on this working set is still running             | Poll `ws_commit_status` (with `asyncId` if you have it); never re-commit (R16) |
@@ -210,12 +219,21 @@ HTTP 204 "No content" from an action or status call is success: nothing to read 
    confirm it is the right record. Or pass `restID:"active"` / the record's restId directly.
 3. Stage: `ws_update_field` (one field), `ws_multi_update` (`updates:[{restID, fields:{...}}]`,
    several fields or records), or `ws_batch_update` (`spec:{field, value, filter?}` for one value
-   across many rows). `filter` supports only `attr == "value"` with the lowercase attribute name
-   (`status == "WAPPR"`); do not use any other form, and always check in `ws_preview_changes` that
-   only the intended rows were staged. Omitting `filter` stages the update on ALL loaded rows.
-   `spec.updater` is not supported -- use `field` + `value`.
+   across many rows). `filter` is ONE condition, `attr == "value"` (`status == "WAPPR"`; single
+   quotes or an unquoted value without spaces also work). The attribute name is matched
+   case-insensitively and must be on the loaded records (select it); the value must match
+   exactly. Any other form (AND/OR, `!=`, `<`, `>`) is refused with `batch_filter_unsupported`
+   and nothing is staged. Omitting `filter` stages the update on ALL loaded rows, so always check
+   in `ws_preview_changes` that only the intended rows were staged. `field` (any case) and
+   `value` are both required; a primary-key attribute (`wonum`, `siteid`, ...) is refused
+   (`batch_update_key_field`); the value is converted to the attribute's type (numbers: plain
+   decimals only; YORN: `true`/`false`/`1`/`0`). The result
+   reports `matched`, `staged` and `unchanged` (rows that already held the value). There is no
+   `spec.updater`.
 4. `ws_preview_changes` -> before/after to the user -> yes -> `ws_commit`.
-5. Never stage a status through `ws_update_field` (R14). Never stage readOnly fields.
+5. Never stage a status through a field-update tool (R14) -- `status` is refused with
+   `use_change_status`, and so are system keys (`field_not_updatable`) and a plain value onto a
+   child collection (`relation_field` / `batch_update_relation_field`). Never stage readOnly fields.
 
 ### 4.6 Child rows and deletes
 
@@ -539,8 +557,8 @@ Maximo rejects it at commit with a BMXAA code.
 
 R13. Never `ws_commit` without `ws_preview_changes` and the user's confirmation first.
 
-R14. Never change a status with `ws_update_field`. Use `maximo_plan_status_change` then
-`maximo_change_status`.
+R14. Never change a status with `ws_update_field`, `ws_multi_update` or `ws_batch_update` (they
+refuse it: `use_change_status`). Use `maximo_plan_status_change` then `maximo_change_status`.
 
 R15. If `ws_commit` returns `{ async: true, asyncId }` the commit is NOT finished. Poll
 `ws_commit_status` (about every 30 s) until it reports `succeeded`, `failed` or `interrupted`, and

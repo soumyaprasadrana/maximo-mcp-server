@@ -123,11 +123,94 @@ first, then `confirm: true`. Verified: upload, list, then delete on a test work 
 - One-shot commands (`--setup-copilot`, `--copilot-status`, `--setup-oauth`, ...) print a failure
   on stderr with Maximo's reason; before, it went only to the log file and the command exited 1
   silently.
+- Tool descriptions and every other agent-visible string are ASCII (no em dashes, arrows or
+  ellipses), and they now say what is true: `mcp_server_status` is always registered (the
+  sync-in-progress hint no longer says to enable dev mode), `mcp_read_logs` needs `--dev-mode` or
+  `--readonly`, and in `relatedObjects` the lowercased `objectName` is the child select key while
+  `relation` is the relationship name for `rel.<name>{...}` and `childCollection`.
+- `--help` is regrouped: the copilot one-shot commands have their own heading instead of sitting
+  under OAuth2, the `--readonly` list includes `maximo_read_server_log` (with
+  `--enable-server-logs`), and `--log-file` / `--maximo-metadata-api-key` say what they actually do.
+- `npm run dump_schemas` no longer depends on the local `.env`: it pins the flags that change the
+  tool list, so `schemas/*.json` always holds the same 59 tools (copilot tools included, opt-in
+  and `mcp_*` diagnostics excluded, esig "not configured" wording). The files carry the server
+  version instead of a timestamp, so dumping unchanged source gives byte-identical files.
+
+### Fixed -- a CLI flag now beats the environment (`--readonly` could be silently ignored)
+
+The launcher only applied a flag when the variable was not already set, so an inherited
+environment value won: `MCP_READONLY=false` in the client's environment plus `--readonly` started a
+full read-write server (verified live: `ws_commit` registered). Every flag form (`--flag value`,
+`--flag=value`, bare boolean) now overwrites the variable, as the help always said: CLI flags win
+over environment variables, which win over `.env`. A repeated flag: the last one wins.
+
+### Fixed -- `ws_batch_update` staged on every row when it did not understand the filter
+
+A `spec.filter` that did not parse as `attr == "value"` (`wopriority > 1`, `status != "CLOSE"`,
+...) was silently dropped, so the update was staged on EVERY loaded row; a compound one
+(`status == "A" AND siteid == "B"`) was read as one long value and matched nothing. Both are now
+refused with `batch_filter_unsupported` (the detail names the grammar) and nothing is staged. An
+unquoted value may not start with `=`, `<`, `>` or `!` (`status ===WAPPR`, `wopriority ==>1` were
+accepted and matched nothing). Also refused, staging nothing:
+
+- `batch_filter_unknown_attribute` -- the filter attribute is on no loaded record. Lean JSON omits
+  unselected and null attributes, so `nosuchattr == ""` used to match EVERY row.
+- `batch_update_missing_value` -- `field` without `value` staged value-less updates and reported
+  success.
+- `batch_update_unknown_field` -- `field` is now matched case-insensitively against the
+  object-structure schema (the loaded records only when no schema is available);
+  `WOPRIORITY` used to add a second, uppercase key.
+- `batch_update_relation_field` -- a child collection (`worklog`): a scalar was staged onto it.
+- `batch_update_key_field` -- an attribute in the schema's primary key (`wonum`, `siteid`): one key
+  value on many rows is never valid. Only `ws_batch_update`, and only when the schema is available;
+  a single-record key change through `ws_update_field` is left to Maximo.
+- `batch_update_invalid_value` -- a value that cannot become the attribute's type ("high" for an
+  integer, "yes" for a YORN). Values are converted to the attribute's type (the same numeric
+  conversion `os_query_builder` uses for where values), so `"3"` equals a loaded `3` and a loose
+  `1` equals a loaded `true` (it used to stage `true -> 1`).
+
+Rows that already hold the value are no longer staged as empty changes, and a row set back to its
+original value loses its change entry; the result reports `matched`, `staged` and `unchanged`
+instead of `matched` alone. The attribute in the filter is matched case-insensitively (records use
+lowercase keys, so `STATUS == "X"` used to match nothing). `spec.updater` is removed from both
+schemas: it was accepted and never used. Omitting `filter` still updates all loaded rows, as the
+description now says. The engine's unused multi-field update path and the unreachable batch
+branches behind it are removed.
+
+### Fixed -- field updates could change status, system keys and child collections
+
+`ws_batch_update`, `ws_update_field` and `ws_multi_update` now share one field guard and refuse,
+staging nothing:
+
+- `use_change_status` -- `status`. It was staged like any field (WAPPR -> x), bypassing
+  `maximo_plan_status_change` / `maximo_change_status` and Maximo's status rules.
+- `field_not_updatable` -- system and identity keys: `href` (staged with an empty preview),
+  `_rowstamp` (an empty change entry), `_id`, `localref`, any key starting with `_`, any
+  `*_collectionref`, and the attribute the schema marks as the unique id (e.g. `workorderid`).
+- `relation_field` (`batch_update_relation_field` in `ws_batch_update`) -- a plain value onto a child
+  collection; use `ws_add_child_record` / `ws_remove_child_record`. `ws_update_field` still accepts a
+  whole array for a relation.
+- `unknown_field` -- `ws_update_field` / `ws_multi_update` refuse a name that is not an attribute of
+  the object-structure schema (a typo, a lookalike such as a zero-width or Cyrillic character, a
+  dotted path). Before, it was staged and reported as success, then ignored or rejected by Maximo at
+  commit. Without a schema the name is not checked (lean rows omit null attributes).
+
+`ws_update_field` and `ws_multi_update` also resolve the field name case-insensitively, and
+`ws_multi_update` answers `op_success: false` (`some_updates_refused`, with `result[]` naming each
+refusal) instead of `true` when a field was refused. New records (`ws_init_new_record`,
+`ws_update_draft`) are not guarded: a create may set status. Numeric values must be plain decimals:
+`Number()` also accepted `"Infinity"`, `"0x10"` and `"1e3"`, and Infinity serializes to null, which
+would have cleared the attribute. That applies to `os_query_builder` where values too, which now
+refuse those with a clear error.
 
 ### Tests
 
-New offline suite `npm run hardening_test` (30: same-host guard, basePath, page limit, log
-parsing); `tool_reg_test` 155 (new tools, opt-in and caller-identity gating); all other suites
+New offline suites `npm run hardening_test` (129: same-host guard, basePath, page limit, log
+parsing, `ws_batch_update` grammar, refusals, field resolution, coercion and no-op rows, the shared
+field guard on batch/single/multi update, plain-decimal and YORN conversion on both the
+`ws_batch_update` and `os_query_builder` side) and
+`npm run cliprec_test` (8, after `node build.js`: CLI > environment > `.env` in the release
+launcher); `tool_reg_test` 155 (new tools, opt-in and caller-identity gating); all other suites
 unchanged and passing. Live against a local Maximo through the release build: 41 checks over every
 new and changed tool (workflow start/route on test work orders, lookups, group by, reports,
 integration errors, server log, status validation, attachment upload and removal, basePath
@@ -1340,7 +1423,7 @@ handler's check fails open if the signature option row is missing.
   new path no longer silently falls back to the ungated helper.
 - Build now copies runtime `.py` assets into `dist` (`npm run copy:assets`).
 
-## 1.3.7 — 2026-07-26
+## 1.3.7 -- 2026-07-26
 
 ### Added
 
@@ -1350,11 +1433,11 @@ handler's check fails open if the signature option row is missing.
 
 - Nested child structures (child-of-child relations) now properly tagged during diff computation for correct MERGE semantics.
 
-## 1.3.6 — 2026-07-26
+## 1.3.6 -- 2026-07-26
 
 (Skipped in favor of 1.3.7)
 
-## 1.3.4 — 2026-07-26
+## 1.3.4 -- 2026-07-26
 
 Query builder enhancement + child handling improvements for nested structures.
 
@@ -1375,7 +1458,7 @@ Query builder enhancement + child handling improvements for nested structures.
 ### Fixed
 
 - **Grandchild (child-of-child) relation arrays now properly tagged with `_action`**.
-  When staging changes to nested child collections (e.g., child-of-child like `MAXSYSINDEXES` → `MAXSYSKEYS`),
+  When staging changes to nested child collections (e.g., child-of-child like `MAXSYSINDEXES` -> `MAXSYSKEYS`),
   the diff engine now discovers grandchild relation metadata and recursively tags all grandchild rows with
   their own `_action` (Add/Change/Delete). This ensures MERGE semantics work correctly on structural children.
   Previously, untagged grandchildren would cause Maximo PATCH errors (e.g., BMXAA9039E on index key updates).
@@ -1384,7 +1467,7 @@ Query builder enhancement + child handling improvements for nested structures.
   Enhanced `getChildRelationMeta()` to discover grandchild relations from the child subschema and cache them
   for `diffChildArray()` recursion. Added `GrandchildRelationMeta` interface for explicit grandchild tracking.
 
-## 1.3.1 — 2026-07-18
+## 1.3.1 -- 2026-07-18
 
 Diagnostics fix, no behavioral changes to any tool schema or query/write logic.
 
@@ -1393,8 +1476,8 @@ Diagnostics fix, no behavioral changes to any tool schema or query/write logic.
 - **`mcp_server_status` reported `version: "unknown"` under normal launch conditions.**
   It read only `process.env.npm_package_version`, which npm sets exclusively for
   processes it launches itself via `npm run <script>`. When an MCP client (Claude
-  Desktop, Claude Code, etc.) spawns the server directly — the normal production
-  path — that env var is never set, so the diagnostic always showed `"unknown"`
+  Desktop, Claude Code, etc.) spawns the server directly -- the normal production
+  path -- that env var is never set, so the diagnostic always showed `"unknown"`
   regardless of the installed version. Extracted the existing, already-correct
   `package.json`-reading fallback (previously private to `server/index.ts`'s own
   `McpServer` version registration) into a shared `src/utils/version.ts` and wired
@@ -1403,7 +1486,7 @@ Diagnostics fix, no behavioral changes to any tool schema or query/write logic.
   making it hard to confirm at a glance which tool-schema mode (strict vs. loose,
   see 1.3.0) a running instance was actually using. Added it to the reported env keys.
 
-## 1.3.0 — 2026-07-18
+## 1.3.0 -- 2026-07-18
 
 Reliability pass focused on cross-agent compatibility of `os_query_builder` and on a
 data-safety gap found while validating an Application Designer (`DMMAXAPPS` /
@@ -1413,7 +1496,7 @@ data-safety gap found while validating an Application Designer (`DMMAXAPPS` /
 
 - **`os_query_builder.childOptions` restructured from a record to an array.**
   Previously `childOptions` was `record<relationshipName, ChildOptionSchema>`. It is
-  now `Array<ChildOptionSchema & { relationship: string }>` — each entry now carries
+  now `Array<ChildOptionSchema & { relationship: string }>` -- each entry now carries
   its own `relationship` field instead of being keyed by it.
 
   Before:
@@ -1429,8 +1512,8 @@ data-safety gap found while validating an Application Designer (`DMMAXAPPS` /
   ]
   ```
 
-  **Why:** the record-of-object shape does not survive this MCP SDK's zod v4 →
-  JSON-Schema conversion — the advertised `inputSchema` collapsed the nested value
+  **Why:** the record-of-object shape does not survive this MCP SDK's zod v4 ->
+  JSON-Schema conversion -- the advertised `inputSchema` collapsed the nested value
   type to `additionalProperties: {}`, hiding `where`/`orderBy`/`limit`/etc. from any
   schema-driven tool-calling agent. This affected both the loose and strict tool
   schemas (strict mode's `.optional()`-only rewrite does not by itself fix
@@ -1455,7 +1538,7 @@ data-safety gap found while validating an Application Designer (`DMMAXAPPS` /
   `DMMAXAPPS.MAXPRESENTATION`, whose only declared `pk` is `["app"]`, a parent-level
   column never present on the child row itself) had no child-local field for
   `diffChildArray` to match on. The previous fallback silently returned the raw
-  submitted array with no dedup or `_action` tagging — if a caller used
+  submitted array with no dedup or `_action` tagging -- if a caller used
   `ws_add_child_record` to update such a child, the working set's in-memory array could
   end up holding both the original row and the newly appended row, and committing that
   verbatim would create a duplicate record.
@@ -1481,4 +1564,4 @@ data-safety gap found while validating an Application Designer (`DMMAXAPPS` /
 
 ## 1.2.3 and earlier
 
-See git history — no changelog was maintained prior to 1.3.0.
+See git history -- no changelog was maintained prior to 1.3.0.

@@ -28,7 +28,7 @@ Add the server to `claude_desktop_config.json`:
 
 Restart Claude Desktop after saving.
 
-To let metadata sync run without blocking the first conversation, add `"MCP_BG_SYNC_WORKER": "true"` — sync runs as a detached process and a file lock prevents duplicate workers on restart.
+To let metadata sync run without blocking the first conversation, add `"MCP_BG_SYNC_WORKER": "true"` -- sync runs as a detached process and a file lock prevents duplicate workers on restart.
 
 ## IBM watsonx Orchestrate
 
@@ -78,7 +78,7 @@ maximo-mcp-server \
 This prints `client_id` and `client_secret`.
 
 ::: danger Save the secret
-The secret is shown **only once** and is stored hashed — it cannot be recovered. If lost, delete the client and create a new one. If `MCP_OAUTH_CREDS_DIR` is set, the credentials are also written to `oauth-credentials.json` there.
+The secret is shown **only once** and is stored hashed -- it cannot be recovered. If lost, delete the client and create a new one. If `MCP_OAUTH_CREDS_DIR` is set, the credentials are also written to `oauth-credentials.json` there.
 :::
 
 ### 2. Obtain a token

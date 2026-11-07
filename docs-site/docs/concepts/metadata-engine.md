@@ -1,28 +1,28 @@
 # Metadata Engine
 
-The Metadata Engine is the server's local knowledge of your Maximo instance. It is what lets an agent **discover before it acts** — finding the right Object Structure, fields, and relationships instead of guessing.
+The Metadata Engine is the server's local knowledge of your Maximo instance. It is what lets an agent **discover before it acts** -- finding the right Object Structure, fields, and relationships instead of guessing.
 
 ## What it stores
 
 Synced from Maximo into a local SQLite database (`<data-dir>/data/meta.db`):
 
-- **Object Structures** — every OS exposed by your instance, with its primary object and description
-- **Schemas** — the API-scoped JSON schema for each OS (queryable parent fields)
-- **Sub-schemas** — the schema of each child object in a relationship, including its natural-key (`pk`) fields
-- **Objects, attributes, relationships** — MBO-level metadata (types, domains, lengths, required flags) via the `MAXMCPMETADATA` script
+- **Object Structures** -- every OS exposed by your instance, with its primary object and description
+- **Schemas** -- the API-scoped JSON schema for each OS (queryable parent fields)
+- **Sub-schemas** -- the schema of each child object in a relationship, including its natural-key (`pk`) fields
+- **Objects, attributes, relationships** -- MBO-level metadata (types, domains, lengths, required flags) via the `MAXMCPMETADATA` script
 
-## How agents use it — `maximo_get_metadata`
+## How agents use it -- `maximo_get_metadata`
 
 Discovery happens through `maximo://` URIs:
 
 | URI pattern | Returns |
 | --- | --- |
-| `maximo://os/search/{query}` | Object Structures matching a keyword — **start here** |
+| `maximo://os/search/{query}` | Object Structures matching a keyword -- **start here** |
 | `maximo://os/{osName}/schema` | Parent-object field names for `select` / `where` |
 | `maximo://os/{osName}/relatedObjects` | Child relationships (relationship name + object name) |
 | `maximo://os/{osName}/subschemas/{childObject}` | Child object field names (comma-separate for several) |
 
-Typical flow: **search** → **schema** → **relatedObjects** → **subschemas** → `os_query_builder`.
+Typical flow: **search** -> **schema** -> **relatedObjects** -> **subschemas** -> `os_query_builder`.
 
 ## Search
 
@@ -43,4 +43,4 @@ with the original one). Fetches are written to the same tables the full sync use
 downstream is unchanged. Concurrent calls share one fetch, a failed refresh keeps serving the
 previous data, and a `meta_cache` table records when each entry was fetched and when it expires.
 
-See [Installation & Setup → First run](/guide/getting-started#first-run-metadata-sync) and the sync settings in the [Configuration Reference](/guide/configuration#metadata-sync).
+See [Installation & Setup -> First run](/guide/getting-started#first-run-metadata-sync) and the sync settings in the [Configuration Reference](/guide/configuration#metadata-sync).

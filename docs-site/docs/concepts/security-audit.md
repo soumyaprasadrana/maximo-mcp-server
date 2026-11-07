@@ -17,7 +17,7 @@ Before staging any write (`INSERT` / `UPDATE` / `DELETE`), the server resolves t
 This means an agent cannot stage a change to an object the connected credentials aren't allowed to modify.
 
 ::: tip Copilot mode
-When `MCP_COPILOT_MODE=true`, Migration Manager (`DM`-prefixed) Object Structures are writable through the `MIGRATIONMGR` `useWith` gate, enabling the experimental Developer Copilot workflow. See [Configuration → Copilot mode](/guide/configuration#maximo-developer-copilot-mode).
+When `MCP_COPILOT_MODE=true`, Migration Manager (`DM`-prefixed) Object Structures are writable through the `MIGRATIONMGR` `useWith` gate, enabling the experimental Developer Copilot workflow. See [Configuration -> Copilot mode](/guide/configuration#maximo-developer-copilot-mode).
 :::
 
 ## OAuth 2.0 (HTTP transport)
@@ -28,7 +28,7 @@ Running with `MCP_TRANSPORT=http` turns on a built-in OAuth 2.0 authorization se
 - **Token:** signed JWT (HS256); the signing secret is auto-generated and persisted
 - **Client registry:** stored in the metadata SQLite DB; secrets are **hashed** and unrecoverable after creation
 
-Every MCP connection must present a valid `Authorization: Bearer <token>`. See [Connecting Clients → HTTP + OAuth](/guide/clients#http-transport-with-oauth-2-0).
+Every MCP connection must present a valid `Authorization: Bearer <token>`. See [Connecting Clients -> HTTP + OAuth](/guide/clients#http-transport-with-oauth-2-0).
 
 ## Audit logging
 
@@ -48,4 +48,4 @@ Set `AUDIT_ENABLED=true` to record every staged Working Set operation to an appe
 
 - **Nothing writes without a preview.** The staged model guarantees a human-readable diff before any working-set commit; status changes, workflow routing, attachments and imports plan before they confirm.
 - **Validation is advisory, Maximo is authoritative.** The server surfaces warnings but lets Maximo enforce the real rules.
-- **Least surprise on children.** Natural-key diffing means untouched child rows are never disturbed — see [Child Records](/concepts/child-records).
+- **Least surprise on children.** Natural-key diffing means untouched child rows are never disturbed -- see [Child Records](/concepts/child-records).

@@ -2,7 +2,7 @@
   "@context": "https://schema.org",
   "@type": "WebSite",
   "name": "Maximo MCP Server Documentation",
-  "description": "Enterprise MCP server documentation for IBM Maximo — metadata-aware query building and staged Working Set transactions for AI agents",
+  "description": "Enterprise MCP server documentation for IBM Maximo -- metadata-aware query building and staged Working Set transactions for AI agents",
   "url": "https://soumyaprasadrana.github.io/maximo-mcp-server",
   "author": {
     "@type": "Person",

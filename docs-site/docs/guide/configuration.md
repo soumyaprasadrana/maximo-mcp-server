@@ -1,6 +1,6 @@
 # Configuration Reference
 
-Every setting can be provided as an **environment variable** or an equivalent **CLI flag**. CLI flags take precedence.
+Every setting can be provided as an **environment variable** or an equivalent **CLI flag**. CLI flags take precedence over environment variables, which take precedence over `.env` (a repeated flag: the last one wins).
 
 ## Required
 
@@ -11,7 +11,9 @@ Every setting can be provided as an **environment variable** or an equivalent **
 | `MCP_DATA_BASE_DIR` | `--data-dir` | Persistent base dir (holds `data/meta.db`) |
 | `MCP_LOGS_DIR` | `--logs-dir` | Persistent log directory |
 
-`MAXIMO_METADATA_API_KEY` may be set separately if the metadata endpoints use a different key.
+| Variable | CLI flag | Description |
+| --- | --- | --- |
+| `MAXIMO_METADATA_API_KEY` | `--maximo-metadata-api-key` | Accepted, but currently has no effect: metadata is always fetched with `MAXIMO_API_KEY` |
 
 ## Electronic signature (optional)
 
@@ -44,7 +46,9 @@ configured value is rejected, the error is `esig_invalid_server_credential` (an 
 | `MCP_LOG_ROTATE_DAILY` | `--log-rotate-daily` | `true` | Rotate logs by date |
 | `MCP_LOG_MAX_MB` | `--log-max-mb` | `20` | Max MB per log file |
 | `MCP_LOG_MAX_FILES` | `--log-max-files` | `30` | Retained log files |
-| `MCP_LOG_TO_CONSOLE` | `--log-to-console` | `false` | Echo logs to console |
+| `MCP_LOG_TO_CONSOLE` | `--log-to-console` | `false` | Echo logs to console (HTTP transport only, unless forced) |
+| `FORCE_LOG_TO_CONSOLE` | `--force-log-to-console` | `false` | With `MCP_LOG_TO_CONSOLE`, echo to the console under stdio too. For local debugging only: console output on stdio can corrupt the MCP stream |
+| `MCP_LOG_FILE_PATH` | `--log-file` | *(unset)* | Alternative way to choose the log directory: when `MCP_LOGS_DIR` is unset, the directory of this path is used. The file name is always `mcp.log` |
 | `MCP_SERVER_DEBUG` | `--debug` | `false` | Enable debug-level logs |
 
 ## Metadata sync
@@ -132,15 +136,18 @@ Additional tuning: `AUDIT_FLUSH_INTERVAL_MS`, `AUDIT_BATCH_SIZE`.
 
 ## OAuth 2.0 (HTTP transport)
 
-| Variable | Default | Description |
-| --- | --- | --- |
-| `MCP_OAUTH_TOKEN_TTL` | `3600` | JWT expiry in seconds |
-| `MCP_OAUTH_CREDS_DIR` | — | Directory where the credentials file is written on client creation |
-| `MCP_SETUP_OAUTH` | — | Set to `1` to run setup-oauth mode and exit |
-| `MCP_LIST_OAUTH_CLIENTS` | — | Set to `1` to list clients and exit |
-| `MCP_DELETE_OAUTH_CLIENT` | — | Set to `<clientId>` to delete a client and exit |
+| Variable | CLI flag | Default | Description |
+| --- | --- | --- | --- |
+| `MCP_OAUTH_TOKEN_TTL` | `--oauth-token-ttl` | `3600` | JWT expiry in seconds |
+| `MCP_OAUTH_CREDS_DIR` | `--oauth-creds-dir` | -- | Directory where the credentials file is written on client creation |
+| `MCP_SETUP_OAUTH` | `--setup-oauth` | -- | Set to `1` to run setup-oauth mode and exit |
+| `OAUTH_CLIENT_ID` | `--oauth-client-id` | *(generated)* | With setup-oauth: the client id to create |
+| `OAUTH_CLIENT_SECRET` | `--oauth-client-secret` | *(generated, 32-byte hex)* | With setup-oauth: the client secret |
+| `OAUTH_CLIENT_SCOPES` | `--oauth-scopes` | `read write delete` | With setup-oauth: space- or comma-separated scopes |
+| `MCP_LIST_OAUTH_CLIENTS` | `--list-oauth-clients` | -- | Set to `1` to list clients and exit |
+| `MCP_DELETE_OAUTH_CLIENT` | `--delete-oauth-client` | -- | Set to `<clientId>` to delete a client and exit |
 
-See [Connecting Clients → HTTP + OAuth](/guide/clients#http-transport-with-oauth-2-0).
+See [Connecting Clients -> HTTP + OAuth](/guide/clients#http-transport-with-oauth-2-0).
 
 ## Dev mode
 
@@ -148,7 +155,7 @@ See [Connecting Clients → HTTP + OAuth](/guide/clients#http-transport-with-oau
 | --- | --- | --- | --- |
 | `MCP_ENABLE_DEV_MODE` | `--dev-mode` | `false` | Register `mcp_read_logs` |
 
-`mcp_server_status` is always registered. Dev mode adds `mcp_read_logs` (this server's own log); both bypass the metadata-sync guard so they work even during an active sync.
+`mcp_server_status` is always registered. Dev mode adds `mcp_read_logs` (this server's own log; withheld while `--caller-apikey` is on); both bypass the metadata-sync guard so they work even during an active sync.
 
 ## Readonly mode
 
@@ -216,7 +223,7 @@ MCP_DISABLED_TOOLS=maximo_import_file*,ws_commit*
 | --- | --- | --- | --- |
 | `MCP_COPILOT_MODE` | `--copilot-mode` | `false` | Experimental Maximo Developer Copilot capabilities, including the automation-script tools ([Copilot Tools](/tools/copilot)) |
 
-When `MCP_COPILOT_MODE=true`, the server enables experimental capabilities using **Migration Manager** Object Structures — intended for coding agents (Claude, Cursor) to develop, configure, and validate Maximo as a platform, using the same discover → stage → preview → approve → commit lifecycle.
+When `MCP_COPILOT_MODE=true`, the server enables experimental capabilities using **Migration Manager** Object Structures -- intended for coding agents (Claude, Cursor) to develop, configure, and validate Maximo as a platform, using the same discover -> stage -> preview -> approve -> commit lifecycle.
 
 Migration Manager Object Structures must be enabled for OSLC discovery. Ensure the Maximo system property `mxe.oslc.validusewith` includes `MIGRATIONMGR`:
 
