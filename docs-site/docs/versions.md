@@ -7,7 +7,7 @@ If any other page disagrees with this one, this page is correct.
 
 | Product | Published | Current line |
 |---------|-----------|--------------|
-| **maximo-mcp-server** | **2.0.0** (npm) | **2.1.0** -- next npm release |
+| **maximo-mcp-server** | **2.1.0** (npm) | **2.1.0** -- current release |
 | **maximo-kit** | **0.1.1** (GitHub Releases) | **0.5.0** -- on request |
 
 Contact: **soumyaprasad.rana@gmail.com**
@@ -16,8 +16,7 @@ Contact: **soumyaprasad.rana@gmail.com**
 
 | | Version | How to get it |
 |---|---|---|
-| **Published (npm)** | **2.0.0** | `npm install -g @soumyaprasadrana/maximo-mcp-server` |
-| **Next release** | **2.1.0** | Built, pending publish -- then the same `npm install` |
+| **Published (npm)** | **2.1.0** | `npm install -g @soumyaprasadrana/maximo-mcp-server` |
 
 **One package, every tool.** Everything the server can do ships in the npm package -- reads,
 working-set writes, status changes, workflow, reports, async commits and the configuration
@@ -30,7 +29,7 @@ choice: `--readonly` keeps the read path only, the ten configuration tools regis
 for non-commercial use (personal, educational, research) under the terms in [LICENSE](https://github.com/soumyaprasadrana/maximo-mcp-server/blob/main/LICENSE).
 For commercial use or redistribution, contact the author.
 
-**2.0.0 is the current npm release** (2026-11-06).
+**2.1.0 is the current npm release** (2026-11-08).
 
 ### What 2.1.0 adds over 2.0.0
 

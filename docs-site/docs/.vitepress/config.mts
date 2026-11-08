@@ -63,7 +63,7 @@ export default defineConfig({
       {
         // Label reflects the last PUBLISHED npm version, not the current dev line.
         // Keep it in step with /versions.md.
-        text: "v2.0.0 (npm)",
+        text: "v2.1.0 (npm)",
         items: [
           { text: "Versions and access", link: "/versions" },
           { text: "npm package", link: NPM },
