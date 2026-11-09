@@ -2,6 +2,31 @@
 
 All notable changes to `@soumyaprasadrana/maximo-mcp-server` are documented here.
 
+## 2.1.1 -- 2026-11-09
+
+### Fixed -- object structure search returned the wrong object structures
+
+`maximo://os/search/{query}` (used by `maximo_get_metadata` and the `os_search` resource) often
+missed the obvious object structure -- "asset" did not return MXAPIASSET, "inventory balance" did not
+return MXAPIINVBAL -- most of all in on-demand mode (`--reconcile-lazy`). Three causes, all fixed:
+
+- The keyword search took the first rows the full-text index matched, not the best ones. It now
+  orders by relevance (bm25), and punctuation in the query no longer makes the match fail.
+- On-demand mode leaves the primary object and description empty until an object structure is
+  opened, so the ranking boosts never fired. Every catalog row is now scored in-process on the
+  apimeta `title` (word coverage, plural/singular, one-letter typos such as Maximo's own
+  "Soreroom"), the object structure name without its prefix (MXAPIASSETMETER for "asset meter",
+  MXAPIPR for "PR"), and the primary / member objects when known. Full-text and semantic hits add a
+  smaller signal.
+- Reporting structures (`REP_*`, useWith REPORTING) crowded out the API ones. They are ranked lower,
+  not removed; MXAPI* structures are preferred.
+
+The title is read from the stored apimeta entry, so this works on databases synced by earlier
+versions without a resync, and needs no change to the MAXMCPMETADATA script. Benchmark on a local
+Maximo (30 common queries): the expected object structure is in the top 3 for 30/30 in both
+on-demand and full-sync mode (before: about 8 of 20 on demand, 13 of 20 full sync). New
+`hardening_test` section 9 (13 checks; 148 total).
+
 ## 2.1.0 -- 2026-11-07
 
 Production hardening and the Maximo capabilities agents were missing: real workflow routing,

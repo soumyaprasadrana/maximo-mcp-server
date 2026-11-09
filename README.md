@@ -265,7 +265,10 @@ More: [docs / troubleshooting and guides](https://soumyaprasadrana.github.io/max
 
 | Published on npm | This package | Edition |
 |---|---|---|
-| **2.1.0** | **2.1.0** | one edition -- every tool is in this package |
+| **2.1.1** | **2.1.1** | one edition -- every tool is in this package |
+
+**2.1.1** fixes object structure search: `maximo://os/search/...` now finds the expected object
+structure, also in on-demand mode. Details: [CHANGELOG](CHANGELOG.md#211----2026-11-09).
 
 **What is new in 2.1.0:** every request pinned to `MAXIMO_URL`; workflow routing and start;
 valid-next-status checks; field lookups (incl. table domains); group-by aggregation; BIRT reports;
